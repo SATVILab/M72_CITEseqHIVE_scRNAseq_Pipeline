@@ -1,0 +1,305 @@
+---
+title: "CITEseqHIVE Seurat Pipeline"
+---
+
+This script is designed to use the Seurat object "obj" created by BeeNetPLUS_v2 as input. obj is contained within the .Rdata file stored in the file path gs://[GOOGLE_BUCKET]/[EXPERIMENT_DIRECTORY]/BNPv2_beta/output/[EXPERIMENT_NAME]/[RUN_FOLDER]/[EXPERIMENT_NAME]_Report.zip. obj contains non-normalized, untiltered, demultiplexed per-cell data (if hashing or CITEseq were used, HTODemux has been run already). This script will load obj and perform filtering, normalization, dimensionality reduction, clustering, and integration. 
+
+### Load libraries
+
+```{r, message=FALSE}
+# If not already done, install packages using BiocManager::install("[PACKAGE]")
+# install.packages('devtools')
+# devtools::install_github('immunogenomics/presto')
+
+library(readr)
+library(dplyr)
+library(Seurat)
+library(patchwork)
+```
+
+### Load Seurat object output from BeeNetPLUS_v2
+
+```{r, warning=FALSE}
+# Set working directory to the parent directory that contains your experiment files and data/ subdirectory 
+
+# Load the R object for a BeeNetPLUS_v2 run
+load("data/20240102_FullPilot_unfiltered.Rdata")
+# Load R objects for subsequent plates into their own separate environments
+# plate2_environment <- new.env()
+# load("data/plate2_processedQC.Rdata", envir = plate2_environment)
+
+```
+
+### Merge Seurat objects - this is not done yet - working with one obj, add later
+
+### Examine QC metrics and filter 
+
+Show QC metrics for the first 5 cells.
+
+```{r}
+head(obj@meta.data, 5)
+
+# To view all metadata information, use:
+meta <- obj@meta.data
+# meta
+```
+
+Visualize QC metrics and determine thresholds for filtering.
+
+```{r}
+VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mito"), ncol = 3, pt.size = 0)
+
+hist(obj$nCount_RNA, breaks = 100)
+```
+```{r}
+# FeatureScatter is typically used to visualize feature-feature relationships, but can be used
+# for anything calculated by the object, i.e. columns in object metadata, PC scores etc.
+
+plot1 <- FeatureScatter(obj, feature1 = "nCount_RNA", feature2 = "percent.mito")
+plot2 <- FeatureScatter(obj, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+```
+Filter filter out cells that have unique feature counts above 2500 or less than 200 and >15% mitochondrial counts
+
+```{r}
+# The Seurat object "obj" produced by BeeNetPLUS_v2 also contains QC metadata based on HTODemux. Cells defined as "Doublet", "Negative", or "LQ" should also be filtered out. 
+
+obj <- subset(obj, subset = SampleName != "Doublet" & SampleName != "Negative" & SampleName != "LQ")
+
+# Now apply filters for feature counts and mitochondrial counts
+
+obj <- subset(obj, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mito < 0.15)
+
+# Create a new metadata object for the filtered data
+
+meta.filtered <- obj@meta.data
+```
+
+Replot the QC metrics for the filtered data
+
+```{r}
+VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mito"), ncol = 3, pt.size = 0)
+```
+```{r}
+plot1 <- FeatureScatter(obj, feature1 = "nCount_RNA", feature2 = "percent.mito")
+plot2 <- FeatureScatter(obj, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+```
+```{r}
+# Plot reads per cell for each sample
+ggplot(meta, aes(x = nCount_RNA, fill = SampleName)) +
+  geom_histogram(bins = 30, alpha = 0.6) +
+  scale_x_log10() +
+  theme_minimal() +
+  labs(title = "Reads Per Cell for Each Sample",
+       x = "Reads per Cell (log scale)",
+       y = "Frequency",
+       fill = "Sample") +
+  facet_wrap(~SampleName, scales = "free_y")
+
+pdf(paste0("reads_per_cell_array.pdf"), height = 15, width = 15)
+ggplot(meta, aes(x = nCount_RNA, fill = SampleName)) +
+  geom_histogram(bins = 30, alpha = 0.6) +
+  scale_x_log10() +
+  theme_minimal() +
+  labs(title = "Reads Per Cell for Each Sample",
+       x = "Reads per Cell (log scale)",
+       y = "Frequency",
+       fill = "Sample") +
+  facet_wrap(~SampleName, scales = "free_y")
+dev.off()
+```
+
+```{r}
+# Alternative plot
+p <- 
+  obj[[]] %>% 
+  ggplot(aes(x = nCount_RNA + 1)) + 
+  geom_density(color = "gray80", linetype = 2, linewidth = 1.5) + 
+  geom_density(aes(color = SampleName)) +
+  scale_x_log10() +
+  theme_bw()
+p
+```
+
+
+### Normalize the data
+
+Perform global-scaling normalization to normalize feature expression measurements for each cell by the total expression, multiply by a scale factor of 10,000, and log-transform the result. Normalized values are stored in obj[["RNA"]]$data.
+
+```{r}
+obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000)
+```
+### Identify highly variable features
+
+```{r, warning=FALSE, message=FALSE}
+# Calculate the top 2000 highly variable features
+obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000)
+
+# Identify the 10 most highly variable genes
+top10 <- head(VariableFeatures(obj), 10)
+
+# plot variable features 
+plot1 <- VariableFeaturePlot(obj)
+
+# Label top 10 variable features
+plot2 <-LabelPoints(plot = plot1, points = top10, repel = TRUE)
+plot2
+```
+### Scale the data
+
+Use linear transformation scaling such that the mean expression across all cells is 0, variance across cells is 1. Results are stored in pbmc[["RNA"]]$scale.data. 
+
+```{r}
+all.genes <- rownames(obj)
+obj <- ScaleData(obj, features = all.genes)
+```
+
+### Perform linear dimensional reduction
+
+Perform PCA on scaled data
+
+```{r, message=FALSE}
+obj <- RunPCA(obj, features = VariableFeatures(object = obj))
+```
+
+Examine top PCA results
+
+```{r}
+# Examine and visualize PCA results a few different ways
+print(obj[["pca"]], dims = 1:5, nfeatures = 5)
+```
+
+Visualize PCA results
+
+```{r}
+VizDimLoadings(obj, dims = 1:2, reduction = "pca")
+```
+```{r}
+DimPlot(obj, reduction = "pca") + NoLegend()
+```
+```{r}
+DimHeatmap(obj, dims = 1, cells = 500, balanced = TRUE)
+```
+```{r}
+DimHeatmap(obj, dims = 1:15, cells = 500, balanced = TRUE)
+```
+### Determine the dimensionality of the dataset
+
+Use an Elbow plot (more efficient alternative to JackStraw procedure) to rank principle components based on the percentage of variance explained by each one. 
+
+Use this and the PCA results to determine the number of dimensions to use for downstream analyses. It is recommended to test this with a few different values to see what best suits the data. 
+
+```{r}
+ElbowPlot(obj)
+```
+### Cluster cells
+
+```{r, message=FALSE}
+# dims and resolution should be adjusted to best fit the data. 
+
+obj <- FindNeighbors(obj, dims = 1:10, reduction = "pca")
+obj <- FindClusters(obj, resolution = 0.5, cluster.name = "unintegrated_clusters")
+```
+```{r}
+# Look at cluster IDs of the first 5 cells
+head(Idents(obj), 5)
+```
+
+### Perform non-linear dimensional reduction
+
+Use UMAP to visualize the clustering. 
+
+```{r, warning=FALSE}
+obj <- RunUMAP(obj, dims = 1:10, reduction = "pca", reduction.name = "umap.unintegrated")
+
+DimPlot(obj, reduction = "umap.unintegrated", group.by = c("group", "seurat_clusters"), label = TRUE)
+```
+
+Save the object at this stage so it can be easily reloaded without having to rerun the computationally intensive steps performed above.
+
+```{r}
+# saveRDS(obj, file = "output/M72_CITEseqHIVE_Seurat_Clustering_Intermediate.rds")
+```
+
+# Determine more accurate cluster resolution using clustree 
+
+```{r}
+resolution.range <- seq(from =0.2, to = 2, by = 0.2)
+obj <- Seurat::FindClusters(object = obj, resolution = resolution.range)
+
+clustree <- clustree(obj, prefix = "RNA_snn_res.")
+
+pdf("clustree.all.pdf")
+clustree
+dev.off()
+
+umap.0.4 <- DimPlot(obj, reduction = 'umap', label = T, group.by = "RNA_snn_res.0.4")
+umap.0.6 <- DimPlot(obj, reduction = 'umap', label = T, group.by = "RNA_snn_res.0.6")
+umap.0.8 <- DimPlot(obj, reduction = 'umap', label = T, group.by = "RNA_snn_res.0.8")
+umap.1 <- DimPlot(obj, reduction = 'umap', label = T, group.by = "RNA_snn_res.1")
+umap.1.2 <- DimPlot(obj, reduction = 'umap', label = T, group.by = "RNA_snn_res.1.2")
+
+snn_all <- umap.0.4 + umap.0.6 + umap.0.8 + umap.1 + umap.1.2
+
+pdf("umap_snn_compare.pdf", width = 20, height = 20)
+snn_all
+dev.off()
+
+snn_all
+
+Idents(object = obj) <- "RNA_snn_res.1"
+
+```
+
+########## ADD CARLY UMAP PLOTS
+
+### Identify differentially expressed features
+
+```{r}
+# find all markers of cluster 4
+cluster4.markers <- FindMarkers(obj, ident.1 = 4)
+head(cluster4.markers, n = 10)
+```
+```{r}
+# find all markers distinguishing cluster 5 from clusters 0 and 3
+cluster5.markers <- FindMarkers(obj, ident.1 = 5, ident.2 = c(0, 3))
+head(cluster5.markers, n = 5)
+```
+```{r}
+# find markers for every cluster compared to all remaining cells, report only the positive ones
+obj.markers <- FindAllMarkers(obj, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+obj.markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1)
+
+write.csv(obj.markers,file="all_markers_snn0.8.csv", quote=FALSE)
+```
+
+
+### Document software
+
+```{r}
+sessionInfo()
+```
+
+
+### Perform integration 
+
+### Identify differentially expressed features - from basic clustering thing
+
+### Plot a hashtag oligo heatmat
+
+```{r}
+HTOHeatmap(
+  obj,
+  assay = "HTO",
+  classification = paste0(assay, "_classification"),
+  global.classification = paste0(assay, "_classification.global"),
+  ncells = 5000,
+  singlet.names = NULL,
+  raster = TRUE
+)
+```
+
