@@ -1,5 +1,5 @@
 ---
-title: "CITEseqHIVE Seurat Filtering"
+title: "CITEseqHIVE Seurat Filter, Merge, and QC"
 format: html
 editor: visual
 ---
@@ -22,11 +22,12 @@ dir_save <- "output/"
 ### Load libraries
 
 ```{r, message=FALSE}
-# Fix this to contain only what is necessary
+# CHECK THIS CONTAINS ONLY NECESSARY LIBRARIES
 library(SingleCellExperiment)
 library(Seurat)
 library(SeuratObject)
 library(scCustomize)
+library(tidyr)
 library(dplyr)
 library(clustree)
 library(ggpubr)
@@ -113,6 +114,9 @@ list_seurat <- lapply(filtered_objects, get)
 # Merge all filtered Seurat objects
 obj <- Merge_Seurat_List(list_seurat = list_seurat)
 
+# Split the MULTI_ID column into HIVE, PID, and STIM columns. Do not remove the MULTI_ID column. 
+obj@meta.data <- separate(obj@meta.data, MULTI_ID, into = c("HIVE", "PID", "STIM"), sep = "-", remove = FALSE)
+
 # Save filtered Seurat object as new .Rdata file
 save(obj, file = "output/FilterMerge_Seurat_obj.Rdata")
 ```
@@ -173,4 +177,3 @@ plot5
 dev.off()
 
 ```
-
