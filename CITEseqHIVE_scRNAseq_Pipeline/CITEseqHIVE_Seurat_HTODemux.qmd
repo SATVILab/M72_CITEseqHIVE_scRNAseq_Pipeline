@@ -1,1 +1,25 @@
+---
+title: "TestScript_Experiment4_MLmodified_COMBINED"
+format: html
+editor: visual
+---
 
+### Clear console
+
+```{r, message=FALSE}
+ls()
+rm(list=ls())
+```
+
+### Set output directory
+
+```{r}
+#dir_save <- "data/"
+```
+
+### Load libraries
+
+```{r, message=FALSE}
+# CHECK THIS CONTAINS ONLY NECESSARY LIBRARIES
+library(Seurat)
+```

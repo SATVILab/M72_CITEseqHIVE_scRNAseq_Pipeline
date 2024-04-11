@@ -1,5 +1,5 @@
 ---
-title: "CITEseqHIVE Seurat Filter, Merge, and QC"
+title: "CITEseq-HIVE Seurat Filter, Merge, and QC"
 format: html
 editor: visual
 ---
@@ -63,11 +63,14 @@ for (data in rdata_files) {
   # Load the Seurat object and assign it a unique name using the associated .Rdata file name
   load(data)
   
+  # Split the MULTI_ID column into HIVE, PID, and STIM columns. Do not remove the MULTI_ID column. 
+  obj@meta.data <- separate(obj@meta.data, MULTI_ID, into = c("HIVE", "PID", "STIM"), sep = "-", remove = FALSE)
+  
   # Save the metadata for each run to a .csv with the same file name as the original .Rdata file
   csv_file <- paste0(file_name, "_metadata.csv")
   write.csv(obj@meta.data, file = file.path(dir_save, paste0(csv_file)), row.names = TRUE, quote = FALSE)
   
-  # Visualize unfiltered QC metrics
+  # Visualize basic unfiltered QC metrics
   plot1 <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mito"), ncol = 3, pt.size = 0)
   plot2 <- ggplot(obj@meta.data, aes(x = nCount_RNA)) +
            geom_histogram(bins = 100)
@@ -85,6 +88,135 @@ for (data in rdata_files) {
                ncol = 3)
   dev.off()
   
+  # Plot additional unfiltered QC metrics to assess sequencing depth
+  # Plot total reads vs nCount_RNA #######################################################################################################
+  plot5 <- ggplot(obj@meta.data, aes(x = reads.Total, y = nCount_RNA)) +
+    geom_point(aes(color = SampleName)) +
+    theme_minimal() +
+    theme(legend.position = "none", panel.grid.minor = element_blank()) +
+    labs(title = "",
+         x = "Total reads",
+         y = "nCount")
+  totalvcount_plot <- paste0(file_name, "_QCplots_TotalReadsVsCounts_unfiltered.pdf")
+  pdf(paste0(dir_save, totalvcount_plot), height = 5, width = 5)
+  print(plot5)
+  dev.off()
+  
+  # Plot exon reads vs nCount_RNA
+  plot6 <- ggplot(obj@meta.data, aes(x = ExonReads, y = nCount_RNA)) +
+    geom_point(aes(color = SampleName)) +
+    theme_minimal() +
+    theme(legend.position = "none", panel.grid.minor = element_blank()) +
+    labs(title = "",
+         x = "Exon reads",
+         y = "nCount")
+  exonvcount_plot <- paste0(file_name, "_QCplots_ExonReadsVsCounts_unfiltered.pdf")
+  pdf(paste0(dir_save, exonvcount_plot), height = 5, width = 5)
+  print(plot6)
+  dev.off()
+  
+  # Plot exon complexity (ExonReads/nCount_RNA)
+  plot7 <- ggplot(obj@meta.data, aes(x = orig.ident, y = Complexity, fill = orig.ident)) +
+    geom_violin(trim = F) +
+    stat_summary(fun=median, geom="crossbar", width=0.5, 
+                 color="black", linetype="solid") +
+    theme_minimal() +
+    theme(legend.position = "none", panel.grid.minor = element_blank()) +
+    labs(title = "Complexity",
+         x = "",
+         y = "Exon reads / nCount") +
+    scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, by = 0.5))
+  exoncomplexity_plot <- paste0(file_name, "_QCplots_ExonComplexity_unfiltered.pdf")
+  pdf(paste0(dir_save, exoncomplexity_plot), height = 5, width = 5)
+  print(plot7)
+  dev.off()
+  
+  # Create a column "TotalComplexity" of reads.Total/nCount 
+  obj@meta.data$TotalComplexity <- obj@meta.data$reads.Total / obj@meta.data$nCount_RNA
+  
+  plot8 <- ggplot(obj@meta.data, aes(x = orig.ident, y = TotalComplexity, fill = orig.ident)) +
+    geom_violin(trim = F) +
+    stat_summary(fun=median, geom="crossbar", width=0.5, 
+                 color="black", linetype="solid") +
+    theme_minimal() +
+    theme(legend.position = "none", panel.grid.minor = element_blank()) +
+    labs(title = "Complexity",
+         x = "",
+         y = "Total reads / nCount") +
+    facet_grid(scales = "free_y")
+  totalcomplexity_plot <- paste0(file_name, "_QCplots_TotalComplexity_unfiltered.pdf")
+  pdf(paste0(dir_save, totalcomplexity_plot), height = 5, width = 5)
+  print(plot8)
+  dev.off()
+  
+  # Create a column "SeqSat" and visualize
+  obj@meta.data$SeqSat <- 1 - (obj@meta.data$nCount_RNA / obj@meta.data$reads.Total)
+  
+  plot9 <- ggplot(obj@meta.data, aes(x = reads.Total, y = SeqSat)) +
+    geom_point(aes(color = orig.ident)) +
+    geom_smooth(se=FALSE) +
+    theme_minimal() +
+    theme(legend.position = "none", panel.grid.minor = element_blank()) +
+    labs(title = "Sequencing Saturation",
+         x = "Total Reads",
+         y = "Sequencing Saturation")
+  seqsat_plot <- paste0(file_name, "_QCplots_SeqSaturation_unfiltered.pdf")
+  pdf(paste0(dir_save, seqsat_plot), height = 5, width = 5)
+  print(plot9)
+  dev.off()
+  
+  plot10 <- ggplot(obj@meta.data, aes(x = orig.ident, y = SeqSat, fill = orig.ident)) +
+    geom_violin(trim = F) +
+    stat_summary(fun=median, geom="crossbar", width=0.5, 
+                 color="black", linetype="solid") +
+    theme_minimal() +
+    theme(legend.position = "none", panel.grid.minor = element_blank()) +
+    labs(title = "Sequencing Saturation",
+         x = "",
+         y = "Sequencing Saturation") +
+    scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.1))
+  seqsatvln_plot <- paste0(file_name, "_QCplots_SeqSaturationVln_unfiltered.pdf")
+  pdf(paste0(dir_save, seqsatvln_plot), height = 5, width = 5)
+  print(plot10)
+  dev.off()
+  
+  # Create a column "SeqDepth" of nCount/nFeature and visualize
+  obj@meta.data$SeqDepth <- obj@meta.data$nCount_RNA / obj@meta.data$nFeature_RNA
+  
+  plot11 <- ggplot(obj@meta.data, aes(x = orig.ident, y = SeqDepth, fill = orig.ident)) +
+    geom_boxplot(outlier.shape = NA) +
+    geom_point(position=position_jitter(width=0.05), size=0.5) +
+    theme_minimal() +
+    theme(legend.position = "none", panel.grid.minor = element_blank()) +
+    labs(title = "Expression Level per Gene",
+         x = "",
+         y = "nCount / nFeature") +
+    scale_y_continuous(limits = c(0, 4), breaks = seq(0, 4, by = 0.5))
+  seqdepthbox_plot <- paste0(file_name, "_QCplots_SeqDepthBox_unfiltered.pdf")
+  pdf(paste0(dir_save, seqdepthbox_plot), height = 5, width = 5)
+  print(plot11)
+  dev.off()
+
+  plot12 <- ggplot(obj@meta.data, aes(x = orig.ident, y = SeqDepth, fill = orig.ident)) +
+    geom_violin(trim = F) +
+    stat_summary(fun=median, geom="crossbar", width=0.5, 
+                 color="black", linetype="solid") +
+    theme_minimal() +
+    theme(legend.position = "none", panel.grid.minor = element_blank()) +
+    labs(title = "Expression Level per Gene",
+         x = "",
+         y = "nCount / nFeature") +
+    scale_y_continuous(limits = c(0, 4), breaks = seq(0, 4, by = 0.5))
+  seqdepthvln_plot <- paste0(file_name, "_QCplots_SeqDepthVln_unfiltered.pdf")
+  pdf(paste0(dir_save, seqdepthvln_plot), height = 5, width = 5)
+  print(plot12)
+  dev.off()
+  
+  qc_plots_additional <- paste0(file_name, "_QCplots_unfiltered_additional.pdf")
+  pdf(paste0(dir_save, qc_plots_additional), height = 10, width = 20)
+  grid.arrange(plot5, plot6, plot7, plot8, plot9, plot10, plot11, plot12, ncol = 4)
+  dev.off()
+
   # Filter out cells that have unique feature counts above 2500 or less than 200 and >15% mitochondrial counts
 
   # The Seurat object "obj" produced by BeeNetPLUS_v2 contains QC metadata based on HTODemux. Cells defined as "Doublet", "Negative", or "LQ" should also be filtered out. 
@@ -113,9 +245,6 @@ list_seurat <- lapply(filtered_objects, get)
 
 # Merge all filtered Seurat objects
 obj <- Merge_Seurat_List(list_seurat = list_seurat)
-
-# Split the MULTI_ID column into HIVE, PID, and STIM columns. Do not remove the MULTI_ID column. 
-obj@meta.data <- separate(obj@meta.data, MULTI_ID, into = c("HIVE", "PID", "STIM"), sep = "-", remove = FALSE)
 
 # Save filtered Seurat object as new .Rdata file
 save(obj, file = "output/FilterMerge_Seurat_obj.Rdata")
