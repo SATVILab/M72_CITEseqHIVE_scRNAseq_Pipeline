@@ -6,7 +6,7 @@ editor: visual
 
 ### Clear console
 
-```{r, message=FALSE}
+```{r, output=FALSE}
 ls()
 rm(list=ls())
 ```
@@ -209,6 +209,8 @@ write.csv(obj.markers, file = file.path(dir_save, "all_markers_snn0.6.csv"), quo
 ### Identify markers differentially expressed between specific clusters of interest.
 
 ```{r, message=FALSE}
+### MAKE THIS A LOOP TO ITERATE OVER ALL CLUSTERS AUTOMATICALLY 
+
 # Find all markers of cluster 1
 cluster1.markers <- FindMarkers(obj, ident.1 = 1)
 head(cluster1.markers, n = 10)
@@ -237,6 +239,16 @@ head(cluster6vPBMC.markers, n = 10)
 Plot differentially expressed features as relative expression and as counts.
 
 ```{r}
+### MAKE THIS A LOOP TO ITERATE OVER ALL CLUSTERS AUTOMATICALLY 
+
+pdf(paste0(dir_save, "DEG_VlnPlot_RelExpCluster1Top10.pdf"), height = 12, width = 6)
+VlnPlot(obj,
+        features = c(rownames(cluster1.markers)[1:10]),
+        ncol = 2,
+        pt.size = 0)
+dev.off()
+
+
 pdf(paste0(dir_save, "DEG_VlnPlot_RelExp.pdf"), height = 12, width = 12)
 VlnPlot(obj,
         features = c("IL7R", "FGFBP2", "GNLY", "GZMB", "CCL5", "LRRN3", "CCR7", "MS4A1", "IGHM", "SWAP70", "CD74", "HLA-DRA"),

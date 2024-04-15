@@ -8,7 +8,7 @@ This script uses the unfiltered Seruat object "obj" output by BeeNetPLUS_v2 as i
 
 ### Clear console
 
-```{r, message=FALSE}
+```{r, output=FALSE}
 ls()
 rm(list=ls())
 ```
@@ -44,7 +44,7 @@ library(cowplot)
 
 ### Load Seurat objects and perform initial QC and filtering
 
-```{r, warning=FALSE, message=FALSE, results=FALSE}
+```{r, warning=FALSE, message=FALSE, output=FALSE}
 # Use a loop to load Seurat objects from each BeeNetPLUS_v2 run, visualize raw QC data, filter out low quality cells and merge the filtered data into a new Seurat object.
 
 # Create a list of all files in the "data" subdirectory
@@ -55,7 +55,6 @@ files <- list.files(directory, full.names = TRUE)
 rdata_files <- files[grepl("\\.Rdata$", files)]
 
 # Loop through each Rdata file, load the Seurat object, perform filtering, and merge into a new Seurat object
-
 for (data in rdata_files) {
   # Extract the file names without extension 
   file_name <- tools::file_path_sans_ext(basename(data))
@@ -89,7 +88,7 @@ for (data in rdata_files) {
   dev.off()
   
   # Plot additional unfiltered QC metrics to assess sequencing depth
-  # Plot total reads vs nCount_RNA #######################################################################################################
+  # Plot total reads vs nCount_RNA 
   plot5 <- ggplot(obj@meta.data, aes(x = reads.Total, y = nCount_RNA)) +
     geom_point(aes(color = SampleName)) +
     theme_minimal() +
@@ -247,7 +246,7 @@ list_seurat <- lapply(filtered_objects, get)
 obj <- Merge_Seurat_List(list_seurat = list_seurat)
 
 # Save filtered Seurat object as new .Rdata file
-save(obj, file = "output/FilterMerge_Seurat_obj.Rdata")
+#save(obj, file = "output/FilterMerge_Seurat_obj.Rdata")
 ```
 
 # Export filtered and merged metadata
@@ -280,7 +279,7 @@ dev.off()
 # Plot reads per cell for each sample
 reads_per_cell <- paste0("QCplots_ReadsPerCell_FilterMerge.pdf")
 pdf(paste0(dir_save, reads_per_cell), height = 15, width = 15)
-ggplot(obj@meta.data, aes(x = nCount_RNA, fill = SampleName)) +
+plot5 <- ggplot(obj@meta.data, aes(x = nCount_RNA, fill = SampleName)) +
   geom_histogram(bins = 30, alpha = 0.6) +
   scale_x_log10() +
   theme_minimal() +
@@ -289,10 +288,11 @@ ggplot(obj@meta.data, aes(x = nCount_RNA, fill = SampleName)) +
        y = "Frequency",
        fill = "Sample") +
   facet_wrap(~SampleName, scales = "free_y")
+print(plot5)
 dev.off()
 
 # Plot reads per cell as smooth density line
-plot5 <- 
+plot6 <- 
   obj[[]] %>% 
   ggplot(aes(x = nCount_RNA + 1)) + 
   geom_density(color = "gray80", linetype = 2, linewidth = 1.5) + 
@@ -302,7 +302,13 @@ plot5 <-
 
 density_plot <- paste0("QCplots_density_FilterMerge.pdf")
 pdf(paste0(dir_save, density_plot), height = 5, width = 15)
-plot5
+plot6
 dev.off()
+
+print(plot1)
+grid.arrange(plot2, plot3, plot4,
+             ncol = 3)
+print(plot5)
+print(plot6)
 
 ```
