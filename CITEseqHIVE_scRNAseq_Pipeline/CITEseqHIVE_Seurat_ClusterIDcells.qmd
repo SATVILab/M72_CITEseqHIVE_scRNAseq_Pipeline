@@ -208,82 +208,82 @@ obj.markers %>%
 write.csv(obj.markers, file = file.path(dir_save, "all_markers_snn0.6.csv"), quote = FALSE)
 ```
 
-### Identify markers differentially expressed between specific clusters of interest.
+### Identify markers differentially expressed between specific clusters of interest and plot differentially expressed features as relative expression and as counts.
 
 ```{r, message=FALSE}
 ### MAKE THIS A LOOP TO ITERATE OVER ALL CLUSTERS AUTOMATICALLY 
 
-# Find all markers of cluster 1
-cluster1.markers <- FindMarkers(obj, ident.1 = 1)
-head(cluster1.markers, n = 10)
+# Create a list of all cluster identities in obj
+cluster.ids <- levels(Idents(obj))
 
-# Find all markers of cluster 2
-cluster2.markers <- FindMarkers(obj, ident.1 = 2)
-head(cluster2.markers, n = 10)
+# Initialize a list to store cluster markers
+cluster.markers <- list()
 
-# Find all markers of cluster 5
-cluster5.markers <- FindMarkers(obj, ident.1 = 5)
-head(cluster5.markers, n = 10)
+# Loop through each Seurat cluster in obj
 
-# Find all markers of cluster 6
-cluster6.markers <- FindMarkers(obj, ident.1 = 6)
-head(cluster6.markers, n = 10)
-
-# Find all markers of cluster 7
-cluster7.markers <- FindMarkers(obj, ident.1 = 7)
-head(cluster7.markers, n = 10)
-
-# Find all markers distinguishing cluster 6 from main PBMC clusters
-cluster6vPBMC.markers <- FindMarkers(obj, ident.1 = 6, ident.2 = c(0:4, 5, 7))
-head(cluster6vPBMC.markers, n = 10)
-```
-
-Plot differentially expressed features as relative expression and as counts.
-
-```{r}
-### MAKE THIS A LOOP TO ITERATE OVER ALL CLUSTERS AUTOMATICALLY 
-
-pdf(paste0(dir_save, "DEG_VlnPlot_RelExpCluster1Top10.pdf"), height = 12, width = 6)
-VlnPlot(obj,
-        features = c(rownames(cluster1.markers)[1:10]),
-        ncol = 2,
-        pt.size = 0)
-dev.off()
-
-
-pdf(paste0(dir_save, "DEG_VlnPlot_RelExp.pdf"), height = 12, width = 12)
-VlnPlot(obj,
-        features = c("IL7R", "FGFBP2", "GNLY", "GZMB", "CCL5", "LRRN3", "CCR7", "MS4A1", "IGHM", "SWAP70", "CD74", "HLA-DRA"),
-        ncol = 3,
-        pt.size = 0)
-dev.off()
-
-pdf(paste0(dir_save, "DEG_VlnPlot_counts.pdf"), height = 12, width = 12)
-VlnPlot(obj, 
-        features = c("IL7R", "FGFBP2", "GNLY", "GZMB", "CCL5", "LRRN3", "CCR7", "MS4A1", "IGHM", "SWAP70", "CD74", "HLA-DRA"), 
-        slot = "counts", 
-        log = TRUE, 
-        ncol = 3,
-        pt.size = 0)
-dev.off()
-
-pdf(paste0(dir_save, "DEG_FeaturePlot.pdf"), height = 60, width = 20)
-FeaturePlot(obj,
-            features = c("IL7R", "FGFBP2", "GNLY", "GZMB", "CCL5", "LRRN3", "CCR7", "MS4A1", "IGHM", "SWAP70", "CD74", "HLA-DRA"), 
+for (cluster.id in cluster.ids) {
+  
+  # Find markers for the current cluster
+  cluster.markers <- FindMarkers(obj, ident.1 = cluster.id)
+  
+  # Assign a dynamic object name based on the cluster ID
+  object.name <- paste0("cluster.markers.", cluster.id)
+  
+  # Export cluster markers to a CSV file
+  csv_file <- paste0(object.name, ".csv")
+  write.csv(cluster.markers, file = file.path(dir_save, paste0(csv_file)), row.names = TRUE)
+  
+  # Plot expression of top 10 differentially expressed genes for the current cluster
+   vln_plot <- VlnPlot(obj,
+          features = rownames(cluster.markers)[1:10],
+          ncol = 2,
+          pt.size = 0)
+  vln_plot_relexp <- paste0("DEG_VlnPlotRelExp_Top10_", object.name, ".pdf")
+  pdf(paste0(dir_save, vln_plot_relexp), height = 12, width = 6)
+  print(vln_plot)
+  dev.off()
+  
+  vln_plot <- VlnPlot(obj,
+          features = rownames(cluster.markers)[1:10],
+          slot = "counts", 
+          log = TRUE, 
+          ncol = 2,
+          pt.size = 0)
+  vln_plot_counts <- paste0("DEG_VlnPlotCounts_Top10_", object.name, ".pdf")
+  pdf(paste0(dir_save, vln_plot_counts), height = 12, width = 6)
+  print(vln_plot)
+  dev.off()
+  
+  feature_plot <- FeaturePlot(obj,
+            features = rownames(cluster.markers)[1:10], 
             label = TRUE,
             label.size = 4,
             split.by = "group",
             pt.size = 0)
-dev.off()
+  feature_plots <- paste0("DEG_FeaturePlot_Top10_", object.name, ".pdf")
+  pdf(paste0(dir_save, feature_plots), height = 24, width = 6)
+  print(feature_plot)
+  dev.off()
+  
+}
 
-pdf(paste0(dir_save, "DEG_Heatmap.pdf"), height = 30, width = 20)
+# Plot a heatmap to look at the top 10 differentially expressed genes across all clusters
+pdf(paste0(dir_save, "DEG_Heatmap_AllClusters_Top10.pdf"), height = 30, width = 20)
 obj.markers %>%
   group_by(cluster) %>%
   top_n(n = 10, wt = avg_log2FC) -> top10
 DoHeatmap(obj, features = top10$gene) + NoLegend()
 dev.off()
 
-#saveRDS(obj, file = file.path(dir_save, "/obj_final.rds"))
+# Find all markers distinguishing an interesting cluster from main PBMC clusters
+cluster4vPBMC.markers <- FindMarkers(obj, ident.1 = 4, ident.2 = c(0:3, 5:7))
+head(cluster4vPBMC.markers, n = 10)
+```
+
+Save .rds to be used for downstream analyses
+
+```{r}
+saveRDS(obj, file = file.path(dir_save, "/obj_final.rds"))
 ```
 
 ### Assign cell types
@@ -302,9 +302,9 @@ Prepare gene sets from input cell marker file. This uses the default of in-built
 
 ```{r}
 # DB file
-db_ <- "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_full.xlsx";
+#db_ <- "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_full.xlsx";
 
-# db_ <- "https://github.com/SATVILab/M72_CITEseqHIVE_scRNAseq_Pipeline/blob/main/CITEseqHIVE_scRNAseq_Pipeline/ScTypeDB_full_MLedit.xlsx"
+db_ <- "ScTypeDB_full_MLedit.xlsx"
 tissue <- "Immune system" # e.g. Immune system, Pancreas, Liver, Eye, Kidney, Brain, Lung, Adrenal, Heart, Intestine, Muscle, Placenta, Spleen, Stomach, Thymus 
 
 # prepare gene sets

@@ -246,7 +246,7 @@ list_seurat <- lapply(filtered_objects, get)
 obj <- Merge_Seurat_List(list_seurat = list_seurat)
 
 # Save filtered Seurat object as new .Rdata file
-#save(obj, file = "output/FilterMerge_Seurat_obj.Rdata")
+save(obj, file = "output/FilterMerge_Seurat_obj.Rdata")
 ```
 
 # Export filtered and merged metadata
