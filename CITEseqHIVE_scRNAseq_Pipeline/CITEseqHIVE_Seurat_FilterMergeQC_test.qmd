@@ -1,5 +1,5 @@
 ---
-title: "CITEseq-HIVE Seurat Filter, Merge, and QC"
+title: "CITEseq-HIVE Seurat Filter, Merge, and QC - Test Dataset"
 format:
   html:
       code-fold: true
@@ -20,7 +20,7 @@ rm(list=ls())
 ### Set output directory
 
 ```{r}
-dir_save <- "output/"
+dir_save <- "output/dataset_test/"
 ```
 
 ### Load libraries
@@ -44,6 +44,7 @@ library(ggplot2)
 library(gridExtra)
 library(cowplot)
 library(DT)
+library(glue)
 ```
 
 ### Load Seurat objects and perform initial QC and filtering
@@ -89,7 +90,7 @@ create_combined_plot <- function(obj) {
     geom_point(aes(color = SampleName)) +
     theme_minimal() +
     theme(legend.position = "none", panel.grid.minor = element_blank()) +
-    labs(title = "",
+    labs(title = "Total Reads vs. nCount_RNA",
          x = "Total reads",
          y = "nCount")
   totalvcount_plot <- paste0(file_name, "_QCplots_TotalReadsVsCounts_unfiltered.pdf")
@@ -102,7 +103,7 @@ create_combined_plot <- function(obj) {
     geom_point(aes(color = SampleName)) +
     theme_minimal() +
     theme(legend.position = "none", panel.grid.minor = element_blank()) +
-    labs(title = "",
+    labs(title = "Exon Reads vs. nCount_RNA",
          x = "Exon reads",
          y = "nCount")
   exonvcount_plot <- paste0(file_name, "_QCplots_ExonReadsVsCounts_unfiltered.pdf")
@@ -117,7 +118,7 @@ create_combined_plot <- function(obj) {
                  color="black", linetype="solid") +
     theme_minimal() +
     theme(legend.position = "none", panel.grid.minor = element_blank()) +
-    labs(title = "Complexity",
+    labs(title = "Exon Complexity",
          x = "",
          y = "Exon reads / nCount") +
     scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, by = 0.5))
@@ -133,7 +134,7 @@ create_combined_plot <- function(obj) {
                  color="black", linetype="solid") +
     theme_minimal() +
     theme(legend.position = "none", panel.grid.minor = element_blank()) +
-    labs(title = "Complexity",
+    labs(title = "Total Complexity",
          x = "",
          y = "Total reads / nCount") +
     facet_grid(scales = "free_y")
@@ -217,7 +218,7 @@ create_combined_plot <- function(obj) {
 combined_plots_list <- list()
 
 # Create a list of all files in the "data" subdirectory
-directory <- "data"
+directory <- "data/dataset_test"
 files <- list.files(directory, full.names = TRUE)
 
 # Filter to keep only the Rdata files
@@ -272,7 +273,6 @@ for (data in rdata_files) {
 ```{r}
 #| fig-height: 32.5
 #| results: asis
-library(glue)
 
 # Generate the tabset in Quarto
 for (file_name in names(combined_plots_list)) {
@@ -341,10 +341,6 @@ pdf(paste0(dir_save, qc_plots), height = 5, width = 15)
 grid.arrange(plot2, plot3, plot4,
              ncol = 3)
 invisible(dev.off())
-
-grid.arrange(plot2, ncol = 1)
-grid.arrange(plot3, ncol = 1)
-grid.arrange(plot4, ncol = 1)
 
 # Plot additional unfiltered QC metrics to assess sequencing depth
 # Plot total reads vs nCount_RNA 
@@ -502,7 +498,6 @@ plot14 <-
   geom_density(aes(color = PID)) +
   scale_x_log10() +
   theme_bw()
-
 density_plot <- paste0("QCplots_density_FilterMerge.pdf")
 pdf(paste0(dir_save, density_plot), height = 5, width = 15)
 plot14

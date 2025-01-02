@@ -1,0 +1,897 @@
+---
+title: "CITEseq-HIVE clusterProfiler Analysis"
+format: html
+editor: visual
+---
+
+## Description
+
+### Clear console
+
+```{r, output=FALSE}
+ls()
+rm(list=ls())
+```
+
+### Set output directory
+
+```{r}
+dir_save <- "output/dataset_full/"
+```
+
+### Load libraries
+
+```{r, message = FALSE}
+# CHECK THIS CONTAINS ONLY NECESSARY LIBRARIES
+library(SingleCellExperiment)
+library(Seurat)
+library(SeuratObject)
+library(dplyr)
+library(clustree)
+library(ggpubr)
+library(patchwork)
+library(magrittr)
+library(HGNChelper)
+library(openxlsx)
+library(multtest)
+library(metap)
+library(ggplot2)
+library(cowplot)
+library(ComplexHeatmap)
+library(magick)
+```
+
+### Load the .Rdata file generated after RNA clustering only by CITEseqHIVE_Seurat_ClusterIDcells.qmd
+
+```{r}
+load("output/Seurat_ClusterIDCellsRNAonly_obj.Rdata")
+obj
+
+### Confirm Seruat object contains assays for RNA and ADT
+Assays(obj)
+
+### Set default assay to RNA
+DefaultAssay(obj) <- "RNA"
+```
+
+### Generate subset objs to use for comparisons
+
+```{r}
+obj_D0 <- subset(obj, subset = VISIT %in% c("D0"))
+obj_D37 <- subset(obj, subset = VISIT %in% c("D37"))
+obj_M72 <- subset(obj, subset = STIM %in% c("M72"))
+obj_UNSTIM <- subset(obj, subset = STIM %in% c("UNSTIM"))
+
+# Progenitor cells and HSC/MPP cells left out
+
+obj_D0_Lymphoid <- subset(obj_D0, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_D37_Lymphoid <- subset(obj_D37, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_M72_Lymphoid <- subset(obj_M72, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_UNSTIM_Lymphoid <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_Lymphoid <- subset(obj, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+
+obj_D0_Myeloid <- subset(obj_D0, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
+obj_D37_Myeloid <- subset(obj_D37, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
+obj_M72_Myeloid <- subset(obj_M72, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
+obj_UNSTIM_Myeloid <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
+obj_Myeloid <- subset(obj, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
+
+obj_D0_T <- subset(obj_D0, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_D37_T <- subset(obj_D37, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_M72_T <- subset(obj_M72, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_UNSTIM_T <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_T <- subset(obj, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+
+```
+
+### DEG
+
+```{r}
+# Set these as identities in the Seurat obj_M72_Lymphoid
+obj_M72_Lymphoid <- SetIdent(obj_M72_Lymphoid, value = obj_M72_Lymphoid$VISIT)
+
+# Perform differential expression
+de_results <- FindMarkers(
+  obj_M72_Lymphoid, 
+  ident.1 = "D37", 
+  ident.2 = "D0", 
+  #min.pct = 0.1,   # Min pct of cells where the gene must be detected (adjust as needed)
+  logfc.threshold = 0.25,  # Log fold change threshold (adjust as needed)
+  test.use = "LR",  # Using logistic regression
+  p.value = 0.05
+)
+
+# Adjust p-values for multiple testing using Benjamini-Hochberg method
+de_results$padj <- p.adjust(de_results$p_val, method = "BH")
+
+# Filter results based on adjusted p-value
+significant_genes <- subset(de_results, padj < 0.1)
+
+# Add gene names from row names to a new column called 'gene'
+significant_genes$gene <- rownames(significant_genes)
+
+# Sort by p-value and select the top 20
+top_genes <- significant_genes %>%
+  arrange(p_val) %>%
+  slice(1:20)
+
+# Create a volcano plot
+ggplot(significant_genes, aes(x=avg_log2FC, y=-log10(p_val))) +
+  geom_point(aes(col=padj < 0.1), alpha=0.5) +  # Color points by adjusted p-value threshold
+  scale_color_manual(values = c("grey", "red")) +
+  theme_minimal() +
+  labs(x="Log2 Fold Change", y="-Log10 P-value", title="Volcano Plot of Differential Expression") +
+  theme(legend.position="none")
+
+# Create volcano plot with top 20 DEG highlighted in red
+# Create the base volcano plot
+volcano_plot <- ggplot(significant_genes, aes(x=avg_log2FC, y=-log10(p_val))) +
+  geom_point(aes(col=padj < 0.1), alpha=0.5) +  # Color points by adjusted p-value threshold
+  scale_color_manual(values = c("grey", "red")) +  # Color non-significant in grey, significant in red
+  theme_minimal() +
+  labs(x="Log2 Fold Change", y="-Log10 P-value", title="Volcano Plot of Differential Expression") +
+  theme(legend.position="none")
+
+# Highlight and label the top 20 genes
+volcano_plot <- volcano_plot +
+  geom_point(data=top_genes, aes(x=avg_log2FC, y=-log10(p_val)), color="red", size=3) +
+  geom_text(data=top_genes, aes(x=avg_log2FC, y=-log10(p_val), label=gene), vjust=1.5, color="black", size=3)
+
+ggsave(filename = paste0(dir_save, "totalMyeloid_volcanoDEG_plot.png"), plot = volcano_plot, width = 8, height = 5)
+
+
+# Create heatmaps
+# Extract the expression data for significant genes
+all_genes <- rownames(obj_M72_Lymphoid)
+sig_genes <- intersect(all_genes, rownames(significant_genes))
+data_matrix <- GetAssayData(obj_M72_Lymphoid, layer = "data")[sig_genes, ]
+
+if (!is.matrix(data_matrix)) {
+    data_matrix <- as.matrix(data_matrix)
+}
+
+# Create the heatmap
+#Heatmap(data_matrix, 
+        #cluster_rows = TRUE, 
+        #cluster_columns = TRUE,
+        #show_row_names = TRUE,
+        #show_column_names = TRUE,
+        #row_title = "Significant Genes", 
+        #column_title = "Samples",
+        #heatmap_legend_param = list(title = "Expression Level", at = c(min(data_matrix), max(data_matrix)), labels = c("Low", "High")))
+
+# Create heatmap of only top 20 DEG
+# Sort significant_genes by adjusted p-value and select the top 20
+top_20_genes <- significant_genes[order(significant_genes$padj), ][1:20, ]
+
+# Ensure gene names are in a column if they are currently row names
+if("gene" %in% colnames(top_20_genes)) {
+    top_20_gene_names <- top_20_genes$gene
+} else {
+    top_20_gene_names <- rownames(top_20_genes)
+}
+
+# Extract the expression data for these top 50 genes
+data_matrix <- GetAssayData(obj_M72_Lymphoid, slot = "data")[top_20_gene_names, ]
+
+# Convert to matrix if not already
+if (!is.matrix(data_matrix)) {
+    data_matrix <- as.matrix(data_matrix)
+}
+
+# Create the heatmap
+#Heatmap(data_matrix,
+        #cluster_rows = TRUE,
+        #cluster_columns = TRUE,
+        #show_row_names = TRUE,
+        #show_column_names = TRUE,
+        #row_title = "Top 20 Significant Genes",
+        #column_title = "Samples",
+        #heatmap_legend_param = list(title = "Expression Level", at = c(min(data_matrix, na.rm = TRUE), max(data_matrix, na.rm = TRUE)), labels = c("Low", "High")))
+
+
+
+# Dot plots
+# Sort by p-value and select the top 20
+top_genes <- significant_genes %>%
+  arrange(p_val) %>%
+  slice(1:20)
+
+# Create a dot plot
+plot <- ggplot(top_genes, 
+               aes(x = gene, y = avg_log2FC, size = -log10(p_val), color = avg_log2FC)) +
+  geom_point(alpha=0.6) +
+  scale_size(range = c(3, 8)) +
+  scale_color_gradient(low = "blue", high = "red") +
+  theme_bw() +
+  labs(title = "Top 20 Differentially Expressed Genes",
+       x = "Gene", y = "Average Log Fold Change") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+ggsave(filename = paste0(dir_save, "totalMyeloid_dotDEGstats_plot.png"), plot = plot, width = 8, height = 5)
+
+
+# Create a DotPlot in Seurat
+# Extract the 'gene' column as a vector
+top_20DEG <- top_genes$gene
+
+plot <- DotPlot(obj_M72_Lymphoid, features = top_20DEG, cols = c("blue", "red")) +
+  theme_bw() +
+  ggtitle("Top 20 Differentially Expressed Genes") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        axis.text.y = element_text(angle = 90, vjust = 0.5, hjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+ggsave(filename = paste0(dir_save, "totalMyeloid_dotDEG_plot.png"), plot = plot, width = 6, height = 4)
+
+# Violin plot for a few selected genes
+plot <- VlnPlot(obj_M72_Lymphoid, features = c(sig_genes[1:10]), group.by = "VISIT",
+        pt.size = 0)
+
+```
+
+### 
+
+### clusterProfiler
+
+```{r}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(DOSE)
+library(ggplot2)
+library(enrichplot)
+
+# Prepare gene list for GSEA (ranks based on logFC or other metric)
+gene_list <- de_results$avg_log2FC
+names(gene_list) <- rownames(de_results)
+gene_list <- sort(gene_list, decreasing = TRUE)
+
+# Convert gene symbols to Entrez IDs for clusterProfiler
+sig_genes <- significant_genes$gene
+sig_genes_entrez <- bitr(sig_genes, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+gene_list_entrez <- bitr(names(gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+gene_list <- setNames(gene_list, gene_list_entrez$ENTREZID)
+
+# Remove any NA values from gene_list
+gene_list <- na.omit(gene_list)
+
+# Verify gene_list content
+head(gene_list)
+
+# Over-representation analysis (ORA)
+ego <- enrichGO(gene = sig_genes_entrez$ENTREZID,
+                OrgDb = org.Hs.eg.db,
+                ont = "BP", # Biological Process
+                pAdjustMethod = "BH",
+                pvalueCutoff = 0.05,
+                qvalueCutoff = 0.05,
+                readable = TRUE)
+
+
+# Plot ORA results
+dotplot(ego, showCategory = 20) + ggtitle("Over-representation Analysis")
+barplot(ego, showCategory=20) 
+
+# Enrichment map
+# Compute the term similarity matrix
+ego <- pairwise_termsim(ego)
+emapplot(ego) + ggtitle("Enrichment Map of GO Terms")
+
+# Gene-concept network
+## convert gene ID to Symbol
+egox <- setReadable(ego, 'org.Hs.eg.db', 'ENTREZID')
+p1 <- cnetplot(egox, color.params = list(foldChange = gene_list))
+## categorySize can be scaled by 'pvalue' or 'geneNum'
+p2 <- cnetplot(egox, categorySize="pvalue", color.params = list(foldChange = gene_list)) + 
+    scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
+p3 <- cnetplot(egox, color.params = list(foldChange = gene_list), circular = TRUE, colorEdge = TRUE) + 
+    scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
+plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
+ggsave(filename = paste0(dir_save, "ORA_cnetplots.png"), plot = plot, width = 25, height = 12)
+
+
+# Heatmap classification
+p1 <- heatplot(egox, showCategory=5)
+p2 <- heatplot(egox, foldChange=gene_list, showCategory=10) +
+    scale_fill_gradient2(name='fold change', low='steelblue', high='firebrick')
+plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+ggsave(filename = paste0(dir_save, "ORA_heatmaps.png"), plot = plot, width = 25, height = 10)
+
+
+# Tree plot
+egox2 <- pairwise_termsim(egox)
+p1 <- treeplot(egox2)
+p2 <- treeplot(egox2, hclust_method = "average")
+plot <- aplot::plot_list(p1, p2, tag_levels='A')
+ggsave(filename = paste0(dir_save, "ORA_treeplots.png"), plot = plot, width = 25, height = 10)
+
+# Upset plots
+#upsetplot(ego)
+
+
+# Gene Set Enrichment Analysis (GSEA)
+gsea_res <- gseGO(geneList = gene_list,
+                  OrgDb = org.Hs.eg.db,
+                  ont = "BP",
+                  pAdjustMethod = "BH",
+                  pvalueCutoff = 1, #CHANGE THIS!!!
+                  verbose = FALSE,
+                  by = "fgsea")
+
+# Save GSEA result to an RDS file
+saveRDS(gsea_res, file = paste0(dir_save, "gsea_results.rds"))
+
+# Plot GSEA results
+plot <- dotplot(gsea_res, showCategory=30) + ggtitle("dotplot for GSEA")
+ggsave(filename = paste0(dir_save, "GSEA_dotplot.png"), plot = plot, width = 8, height = 12)
+
+# Gene-concept network
+## convert gene ID to Symbol
+egox <- setReadable(gsea_res, 'org.Hs.eg.db', 'ENTREZID')
+p1 <- cnetplot(egox, color.params = list(foldChange = gene_list))
+## categorySize can be scaled by 'pvalue' or 'geneNum'
+p2 <- cnetplot(egox, categorySize="pvalue", color.params = list(foldChange = gene_list)) + 
+    scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
+p3 <- cnetplot(egox, color.params = list(foldChange = gene_list), circular = TRUE, colorEdge = TRUE) + 
+    scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
+plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
+ggsave(filename = paste0(dir_save, "GSEA_cnetplots.png"), plot = plot, width = 25, height = 12)
+
+# Heatmap classification
+p1 <- heatplot(egox, showCategory=5)
+p2 <- heatplot(egox, foldChange=gene_list, showCategory=5) +
+    scale_fill_gradient2(name='fold change', low='steelblue', high='firebrick')
+plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+ggsave(filename = paste0(dir_save, "GSEA_heatmaps.png"), plot = plot, width = 25, height = 10)
+
+# Ridgeplot
+plot <- ridgeplot(gsea_res)
+ggsave(filename = paste0(dir_save, "GSEA_ridgeplot.png"), plot = plot, width = 10, height = 15)
+
+# Running score and preranked list
+p1 <- gseaplot(gsea_res, geneSetID = 1, by = "runningScore", title = gsea_res$Description[1])
+p2 <- gseaplot(gsea_res, geneSetID = 1, by = "preranked", title = gsea_res$Description[1])
+p3 <- gseaplot(gsea_res, geneSetID = 1, title = gsea_res$Description[1])
+cowplot::plot_grid(p1, p2, p3, ncol=1, labels=LETTERS[1:3])
+
+gseaplot2(gsea_res, geneSetID = 1, title = gsea_res$Description[1])
+gseaplot2(gsea_res, geneSetID = 1:3)
+plot <- gseaplot2(gsea_res, geneSetID = 1:3, pvalue_table = TRUE,
+          color = c("#E495A5", "#86B875", "#7DB0DD"), ES_geom = "dot")
+ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15, height = 15)
+
+
+```
+
+## DEG and clusterProfiler for all cell types and STIMs
+
+```{r}
+# Identify unique features in obj@meta.data$sctype_classification and obj@meta.data$STIM
+  sctype_classifications <- setdiff(unique(obj$sctype_classification), "Plasma B cells")
+  stim_conditions <- setdiff(unique(obj$STIM), "UNSTIM")
+  
+  # Directory to save plots
+  dir_save <- "output/dataset_full/"
+  
+  # Outer loop through each STIM condition
+  for (stim in stim_conditions) {
+    # Subset the Seurat obj based on STIM condition
+    obj_stim <- subset(obj, STIM == stim)
+    
+    # Inner loop through each cell type in sctype_classification
+    for (cell_type in sctype_classifications) {
+      # Subset the Seurat obj based on sctype_classification
+      obj_subset <- subset(obj_stim, sctype_classification == cell_type)
+      
+      # Set these as identities in the Seurat obj_subset
+      obj_subset <- SetIdent(obj_subset, value = obj_subset$VISIT)
+      
+      # Perform differential expression
+      de_results <- FindMarkers(
+        obj_subset, 
+        ident.1 = "D37", 
+        ident.2 = "D0", 
+        logfc.threshold = 0.25,  # Log fold change threshold (adjust as needed)
+        test.use = "LR",  # Using logistic regression
+        p.value = 0.05
+      )
+      
+      # Adjust p-values for multiple testing using Benjamini-Hochberg method
+      de_results$padj <- p.adjust(de_results$p_val, method = "BH")
+      
+      # Filter results based on adjusted p-value
+      significant_genes <- subset(de_results, padj < 0.1)
+      
+      # Add gene names from row names to a new column called 'gene'
+      significant_genes$gene <- rownames(significant_genes)
+      
+      # Determine the number of top genes to use
+      num_top_genes <- min(20, nrow(significant_genes))
+      
+      # Sort by p-value and select the top genes
+      top_genes <- significant_genes %>%
+        arrange(p_val) %>%
+        slice(1:num_top_genes)
+      
+      # Create a volcano plot
+      volcano_plot <- ggplot(significant_genes, aes(x=avg_log2FC, y=-log10(p_val))) +
+        geom_point(aes(col=padj < 0.1), alpha=0.5) +  # Color points by adjusted p-value threshold
+        scale_color_manual(values = c("grey", "red")) +
+        theme_minimal() +
+        labs(x="Log2 Fold Change", y="-Log10 P-value", title=paste("Volcano Plot of Differential Expression for", cell_type, "under", stim, "condition")) +
+        theme(legend.position="none")
+      
+      # Highlight and label the top genes
+      volcano_plot <- volcano_plot +
+        geom_point(data=top_genes, aes(x=avg_log2FC, y=-log10(p_val)), color="red", size=3) +
+        geom_text(data=top_genes, aes(x=avg_log2FC, y=-log10(p_val), label=gene), vjust=1.5, color="black", size=3)
+      
+      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_volcanoDEG_plot.png"), plot = volcano_plot, width = 8, height = 5)
+      
+      # Create heatmaps
+      # Extract the expression data for significant genes
+      all_genes <- rownames(obj_subset)
+      sig_genes <- intersect(all_genes, rownames(significant_genes))
+      data_matrix <- GetAssayData(obj_subset, slot = "data")[sig_genes, ]
+      
+      if (!is.matrix(data_matrix)) {
+        data_matrix <- as.matrix(data_matrix)
+      }
+      
+      # Create the heatmap
+      #Heatmap(data_matrix, 
+      #       cluster_rows = TRUE, 
+      #      cluster_columns = TRUE,
+      #     show_row_names = TRUE,
+      #   show_column_names = TRUE,
+      #   row_title = "Significant Genes", 
+      #  column_title = "Samples",
+      # heatmap_legend_param = list(title = "Expression Level", at = c(min(data_matrix, na.rm = TRUE), max(data_matrix, na.rm = TRUE)), labels = c("Low", "High")))
+      
+      # Create heatmap of only top genes
+      # Ensure gene names are in a column if they are currently row names
+      if("gene" %in% colnames(top_genes)) {
+        top_gene_names <- top_genes$gene
+      } else {
+        top_gene_names <- rownames(top_genes)
+      }
+      
+      # Extract the expression data for these top genes
+      data_matrix <- GetAssayData(obj_subset, slot = "data")[top_gene_names, ]
+      
+      # Convert to matrix if not already
+      if (!is.matrix(data_matrix)) {
+        data_matrix <- as.matrix(data_matrix)
+      }
+      
+      # Create the heatmap
+      #Heatmap(data_matrix,
+      #       cluster_rows = TRUE,
+      #      cluster_columns = TRUE,
+      #     show_row_names = TRUE,
+      #    show_column_names = TRUE,
+      #   row_title = "Top Significant Genes",
+      #  column_title = "Samples",
+      # heatmap_legend_param = list(title = "Expression Level", at = c(min(data_matrix, na.rm = TRUE), max(data_matrix, na.rm = TRUE)), labels = c("Low", "High")))
+      
+      # Dot plots
+      # Sort by p-value and select the top genes
+      top_genes <- significant_genes %>%
+        arrange(p_val) %>%
+        slice(1:num_top_genes)
+      
+      # Create a dot plot
+      plot <- ggplot(top_genes, 
+                     aes(x = gene, y = avg_log2FC, size = -log10(p_val), color = avg_log2FC)) +
+        geom_point(alpha=0.6) +
+        scale_size(range = c(3, 8)) +
+        scale_color_gradient(low = "blue", high = "red") +
+        theme_bw() +
+        labs(title = paste("Top Differentially Expressed Genes for", cell_type, "under", stim, "condition"),
+             x = "Gene", y = "Average Log Fold Change") +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+      
+      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_dotDEGstats_plot.png"), plot = plot, width = 8, height = 5)
+      
+      # Create a DotPlot in Seurat
+      # Extract the 'gene' column as a vector
+      top_DEG <- top_genes$gene
+      
+      # Check if top_DEG contains any genes before plotting
+      if (length(top_DEG) > 0) {
+        plot <- DotPlot(obj_subset, features = top_DEG, cols = c("blue", "red")) +
+          theme_bw() +
+          ggtitle(paste("Top Differentially Expressed Genes for", cell_type, "under", stim, "condition")) +
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+                axis.text.y = element_text(angle = 90, vjust = 0.5, hjust = 0.5),
+                axis.title.x = element_blank(),
+                axis.title.y = element_blank())
+        
+        ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_dotDEG_plot.png"), plot = plot, width = 6, height = 4)
+      } else {
+        print(paste("No top DEGs found for DotPlot for", cell_type, "under", stim, "condition"))
+      }
+      
+      # Violin plot for a few selected genes
+      plot <- VlnPlot(obj_subset, features = c(sig_genes[1:num_top_genes]), group.by = "VISIT",
+                      pt.size = 0)
+      
+      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_violinDEG_plot.png"), plot = plot, width = 8, height = 5)
+      
+      # ClusterProfiler Analysis
+      # Prepare gene list for GSEA (ranks based on logFC or other metric)
+      gene_list <- de_results$avg_log2FC
+      names(gene_list) <- rownames(de_results)
+      gene_list <- sort(gene_list, decreasing = TRUE)
+      
+      # Convert gene symbols to Entrez IDs for clusterProfiler
+      sig_genes <- significant_genes$gene
+      sig_genes_entrez <- bitr(sig_genes, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+      gene_list_entrez <- bitr(names(gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+      gene_list <- setNames(gene_list, gene_list_entrez$ENTREZID)
+      
+      # Remove any NA values from gene_list
+      gene_list <- na.omit(gene_list)
+      
+      # Verify gene_list content
+      head(gene_list)
+      
+      # Over-representation analysis (ORA)
+      ego <- enrichGO(gene = sig_genes_entrez$ENTREZID,
+                      OrgDb = org.Hs.eg.db,
+                      ont = "BP", # Biological Process
+                      pAdjustMethod = "BH",
+                      pvalueCutoff = 0.05,
+                      qvalueCutoff = 0.05,
+                      readable = TRUE)
+      
+      # Check if ego contains any enriched terms before plotting
+      if (nrow(ego) > 0) {
+        # Plot ORA results
+        dotplot(ego, showCategory = 20) + ggtitle("Over-representation Analysis")
+        barplot(ego, showCategory=20) 
+        
+        # Enrichment map
+        # Compute the term similarity matrix
+        ego <- pairwise_termsim(ego)
+        emapplot(ego) + ggtitle("Enrichment Map of GO Terms")
+        
+        # Gene-concept network
+        ## convert gene ID to Symbol
+        egox <- setReadable(ego, 'org.Hs.eg.db', 'ENTREZID')
+        p1 <- cnetplot(egox, color.params = list(foldChange = gene_list))
+        ## categorySize can be scaled by 'pvalue' or 'geneNum'
+        p2 <- cnetplot(egox, categorySize="pvalue", color.params = list(foldChange = gene_list)) + 
+          scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
+        p3 <- cnetplot(egox, color.params = list(foldChange = gene_list), circular = TRUE, colorEdge = TRUE) + 
+          scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
+        plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
+        ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_ORA_cnetplots.png"), plot = plot, width = 25, height = 12)
+        
+        # Heatmap classification
+        p1 <- heatplot(egox, showCategory=5)
+        p2 <- heatplot(egox, foldChange=gene_list, showCategory=10) +
+          scale_fill_gradient2(name='fold change', low='steelblue', high='firebrick')
+        plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+        ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_ORA_heatmaps.png"), plot = plot, width = 25, height = 10)
+        
+        # Tree plot
+        #egox2 <- pairwise_termsim(egox)
+        #if (nrow(egox2) > 3) {
+          #p1 <- treeplot(egox2)
+          #p2 <- treeplot(egox2, hclust_method = "average")
+          #plot <- aplot::plot_list(p1, p2, tag_levels='A')
+          #ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_ORA_treeplots.png"), plot = plot, width = 25, height = 10)
+        #} else {
+          #print(paste("Skipping tree plot for", cell_type, "under", stim, "condition due to insufficient clusters"))
+        #}
+      #} else {
+        #print(paste("No enriched terms found for", cell_type, "under", stim, "condition"))
+      #}
+      
+      # Gene Set Enrichment Analysis (GSEA)
+      gsea_res <- gseGO(geneList = gene_list,
+                        OrgDb = org.Hs.eg.db,
+                        ont = "BP",
+                        pAdjustMethod = "BH",
+                        pvalueCutoff = 1, #CHANGE THIS!!!
+                        verbose = FALSE,
+                        by = "fgsea")
+      
+      # Save GSEA result to an RDS file
+      saveRDS(gsea_res, file = paste0(dir_save, cell_type, "_", stim, "_gsea_results.rds"))
+      
+      # Plot GSEA results
+      plot <- dotplot(gsea_res, showCategory=30) + ggtitle("dotplot for GSEA")
+      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_GSEA_dotplot.png"), plot = plot, width = 8, height = 12)
+      
+      # Gene-concept network
+      ## convert gene ID to Symbol
+      egox <- setReadable(gsea_res, 'org.Hs.eg.db', 'ENTREZID')
+      p1 <- cnetplot(egox, color.params = list(foldChange = gene_list))
+      ## categorySize can be scaled by 'pvalue' or 'geneNum'
+      p2 <- cnetplot(egox, categorySize="pvalue", color.params = list(foldChange = gene_list)) + 
+        scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
+      p3 <- cnetplot(egox, color.params = list(foldChange = gene_list), circular = TRUE, colorEdge = TRUE) + 
+        scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
+      plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
+      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_GSEA_cnetplots.png"), plot = plot, width = 25, height = 12)
+      
+      # Heatmap classification
+      p1 <- heatplot(egox, showCategory=5)
+      p2 <- heatplot(egox, foldChange=gene_list, showCategory=5) +
+        scale_fill_gradient2(name='fold change', low='steelblue', high='firebrick')
+      plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_GSEA_heatmaps.png"), plot = plot, width = 25, height = 10)
+      
+      # Ridgeplot
+      plot <- ridgeplot(gsea_res)
+      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_GSEA_ridgeplot.png"), plot = plot, width = 10, height = 15)
+      
+      # Running score and preranked list
+      p1 <- gseaplot(gsea_res, geneSetID = 1, by = "runningScore", title = gsea_res$Description[1])
+      p2 <- gseaplot(gsea_res, geneSetID = 1, by = "preranked", title = gsea_res$Description[1])
+      p3 <- gseaplot(gsea_res, geneSetID = 1, title = gsea_res$Description[1])
+      cowplot::plot_grid(p1, p2, p3, ncol=1, labels=LETTERS[1:3])
+      
+      gseaplot2(gsea_res, geneSetID = 1, title = gsea_res$Description[1])
+      gseaplot2(gsea_res, geneSetID = 1:3)
+      plot <- gseaplot2(gsea_res, geneSetID = 1:3, pvalue_table = TRUE,
+                        color = c("#E495A5", "#86B875", "#7DB0DD"), ES_geom = "dot")
+      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_GSEA_gseaplot.png"), plot = plot, width = 15, height = 15)
+    }
+    }
+  }
+```
+
+
+
+## Radial organization of scRNAseq clusters - to get around issue with differing cluster IDs - GIS - Ross something Florida 
+## Look at expression of our immune correlates in the LN after vaccination with M72 - spatial expression of different markers on different cell types to understand how M72 activates immune cells in the LN to generate memory - healthy participants vaccinated with M72 vs placebo 
+
+
+
+
+
+#### **Jaccard Index**
+
+**(for overlap of DEGs)**
+
+**What it does**: The Jaccard Index measures how much overlap there is between the DEGs identified in two different leave-one-out iterations (when you exclude one participant at a time). It tells you what percentage of genes are found in both iterations.
+
+**How it helps**: A high Jaccard score means that most of the same DEGs are identified in both iterations, which suggests that your results are robust and consistent, even when you remove one participant. This shows that the DEGs aren’t being heavily influenced by any single participant.
+
+```{r}
+
+# Get the counts for each Mtb group within "No pathology"
+  cell_counts <- obj@meta.data %>% #CHECK
+    filter(Pathology == "No pathology") %>%
+    select(PID, Mtb, Pathology) %>% 
+    group_by(PID, Mtb, Pathology) %>%
+    summarise(TotalCell_count = n(), .groups = 'drop')
+  
+
+# Function to calculate Jaccard Index
+calculate_jaccard <- function(list1, list2) {
+    intersection <- length(intersect(list1, list2))
+    union <- length(union(list1, list2))
+    if (union == 0) return(0)  # Avoid division by zero if both lists are empty
+    return(intersection / union)
+}
+
+# Compute the Jaccard Index for each pair of leave-one-out results
+num_participants <- length(participant_ids)
+jaccard_matrix <- matrix(nrow = num_participants, ncol = num_participants,
+                         dimnames = list(participant_ids, participant_ids))
+
+for (i in 1:num_participants) {
+    for (j in 1:num_participants) {
+        genes_i <- gene_presence_count[[i]]
+        genes_j <- gene_presence_count[[j]]
+        jaccard_matrix[i, j] <- calculate_jaccard(genes_i, genes_j)
+    }
+}
+
+# Visualize the Jaccard similarity matrix
+heatmap(as.matrix(jaccard_matrix), Rowv = NA, Colv = NA, main = "Jaccard Similarity Matrix",
+        scale = "none")
+
+# Refined visualization of Jaccard similarity matrix
+# Create a function to remove the lower triangle of the matrix
+remove_lower_triangle <- function(mat) {
+  mat[lower.tri(mat)] <- NA  # Set lower triangle to NA
+  return(mat)
+}
+
+# Mask the lower triangle of the Jaccard similarity matrix
+matrix_upper <- remove_lower_triangle(jaccard_matrix) #CHECK CORRECT MATRIC HERE
+
+# Melt the matrix into long format for ggplot
+matrix_melted <- reshape2::melt(matrix_upper, na.rm = TRUE)  # Remove NA values during melt
+
+# Create the heatmap with ggplot2
+p <- ggplot(matrix_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = sprintf("%.2f", value)), color = "black") +  # Display values inside tiles
+  scale_fill_gradient(low = "white", high = "firebrick", limits = c(0, 1)) +  # Color scale
+  scale_x_discrete(position = "top") +
+  theme_classic() +
+  labs(title = "Jaccard Similarity Matrix", x = "Iteration 1", y = "Iteration 2") #+
+  #theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+cowplot::ggsave2(file.path(dir_save, 'Jaccard_matrix.png'), p,
+                 units = 'cm',
+                 width = 18,
+                 height = 10)
+
+# Permutation test for Jaccard Index significance
+num_permutations <- 1000
+all_genes <- unlist(gene_presence_count)  # Flatten all genes into a single vector
+list_sizes <- sapply(gene_presence_count, length)  # Store original list sizes
+
+permuted_jaccard_scores <- replicate(num_permutations, {
+    shuffled_genes <- sample(all_genes)
+    # Split them into permuted lists respecting original list sizes
+    permuted_lists <- split(shuffled_genes, rep(seq_len(num_participants), times = list_sizes))
+    
+    # Calculate Jaccard Index for all pairs in this permutation
+    all_scores <- combn(seq_along(permuted_lists), 2, function(idxs) {
+        calculate_jaccard(permuted_lists[[idxs[1]]], permuted_lists[[idxs[2]]])
+    }, simplify = TRUE)
+    
+    mean(all_scores)  # Return the mean Jaccard Index for this permutation
+}, simplify = TRUE)  # Ensure the output is simplified to a numeric vector
+
+# Calculate the observed average Jaccard Index (excluding diagonal self-comparisons)
+observed_jaccard <- mean(jaccard_matrix[lower.tri(jaccard_matrix, diag = FALSE)])
+median_jaccard <- median(jaccard_matrix[lower.tri(jaccard_matrix, diag = FALSE)])
+p_value <- mean(permuted_jaccard_scores >= observed_jaccard)
+print(paste("P-value for observed Jaccard Index being higher than chance:", p_value))
+
+
+# Save jaccard results
+# Set the directory where you want to save the output
+output_file <- paste0(dir_save, "Jaccard_output.txt")
+
+# Open a connection to the text file
+sink(output_file)
+
+# Print minimum and maximum of permuted scores and the observed Jaccard Index
+print(paste("Min permuted Jaccard:", min(permuted_jaccard_scores)))
+print(paste("Max permuted Jaccard:", max(permuted_jaccard_scores)))
+print(paste("Observed Mean Jaccard:", observed_jaccard))
+print(paste("Observed Median Jaccard:", median_jaccard))
+print(paste("P-value for observed Jaccard Index being higher than chance:", p_value))
+
+# Close the connection to the text file
+sink()  # Stops writing to the file and goes back to printing in the console
+```
+
+#### **Concordance Index**
+
+**(C-Index; for rank agreement)**
+
+**What it does**: The C-Index checks how similar the rankings of the DEGs are between two iterations. It looks at how well the order of significance (like the p-values or fold changes) is preserved between two iterations.
+
+**How it helps**: A high C-Index (closer to 1) means that the rankings of DEGs are similar between iterations, indicating that the relative importance of each gene is stable, even when you remove one participant. This again shows that your results are not dependent on the presence or absence of any one participant.
+
+**Simple example**: Imagine that in one iteration, Gene X is ranked as the most significant, and in another iteration, it’s also ranked highly. A high C-Index means that the ranking of the genes stays the same (or very similar) across leave-one-out iterations.
+
+**Why use both?**
+
+Jaccard Index tells you if the same genes are found across different iterations.
+
+C-Index tells you if the ranking order of these genes (how significant or important they are) stays consistent.
+
+**In summary:**
+
+If both the Jaccard Index and C-Index are high, your DEGs are reproducible across iterations, and your findings are not driven by any single participant. This demonstrates that your analysis is robust and the results can be trusted.
+
+```{r}
+
+# Function to calculate the Concordance Index between two ranked lists with potentially different sets of genes
+calculate_concordance_index <- function(ranks1, ranks2, genes1, genes2) {
+  # Find the intersection of genes between the two sets
+  common_genes <- intersect(genes1, genes2)
+  
+  # Subset the ranks based on the common genes
+  ranks1_common <- ranks1[match(common_genes, genes1)]
+  ranks2_common <- ranks2[match(common_genes, genes2)]
+  
+  # Remove any NA values (in case of missing ranks for common genes)
+  valid_indices <- complete.cases(ranks1_common, ranks2_common)
+  ranks1_common <- ranks1_common[valid_indices]
+  ranks2_common <- ranks2_common[valid_indices]
+  
+  n <- length(ranks1_common)
+  concordant <- 0
+  discordant <- 0
+  
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      # Check if the order of pairs (i, j) is the same in both rankings
+      if ((ranks1_common[i] < ranks1_common[j] && ranks2_common[i] < ranks2_common[j]) ||
+          (ranks1_common[i] > ranks1_common[j] && ranks2_common[i] > ranks2_common[j])) {
+        concordant <- concordant + 1
+      } else if ((ranks1_common[i] < ranks1_common[j] && ranks2_common[i] > ranks2_common[j]) ||
+                 (ranks1_common[i] > ranks1_common[j] && ranks2_common[i] < ranks2_common[j])) {
+        discordant <- discordant + 1
+      }
+    }
+  }
+  
+  # Handle case where all pairs are invalid or there are no valid pairs
+  if (concordant + discordant == 0) {
+    return(NA)  # Return NA if no valid comparisons are possible
+  }
+  
+  # C-Index is the ratio of concordant pairs to all pairs
+  c_index <- concordant / (concordant + discordant)
+  return(c_index)
+}
+
+# List of gene names corresponding to each leave-one-out iteration
+deg_gene_list <- lapply(leave_one_out_results, rownames)
+
+# Rank the DEGs by p-value for each leave-one-out result
+deg_ranks_list <- lapply(leave_one_out_results, function(res) {
+  return(rank(-log10(res$p_val)))  # Rank by p-value, adjust to your preference
+})
+
+# Initialize a matrix to store the Concordance Index for each pair of iterations
+num_iterations <- length(leave_one_out_results)
+c_index_matrix <- matrix(NA, nrow = num_iterations, ncol = num_iterations, dimnames = list(participant_ids, participant_ids))
+
+# Calculate the pairwise Concordance Index between each leave-one-out iteration
+for (i in 1:num_iterations) {
+  for (j in 1:num_iterations) {
+    if (i != j) {
+      # Get the ranks and genes for the two iterations
+      ranks_i <- deg_ranks_list[[i]]
+      ranks_j <- deg_ranks_list[[j]]
+      genes_i <- deg_gene_list[[i]]
+      genes_j <- deg_gene_list[[j]]
+      
+      # Calculate the Concordance Index between iteration i and j
+      c_index_matrix[i, j] <- calculate_concordance_index(ranks_i, ranks_j, genes_i, genes_j)
+    } else {
+      # Self-comparison should give a perfect concordance (C-Index = 1)
+      c_index_matrix[i, j] <- 1
+    }
+  }
+}
+
+# Visualize the Concordance Index matrix without scaling
+heatmap(as.matrix(c_index_matrix), Rowv = NA, Colv = NA, main = "Concordance Index Between Iterations", scale = "none")
+
+
+# Refined visualization of Concordance Index matrix
+# Create a function to remove the lower triangle of the matrix
+remove_lower_triangle <- function(mat) {
+  mat[lower.tri(mat)] <- NA  # Set lower triangle to NA
+  return(mat)
+}
+
+# Mask the lower triangle of the Concordance Index matrix
+matrix_upper <- remove_lower_triangle(c_index_matrix) #CHECK CORRECT MATRIC HERE
+
+# Melt the matrix into long format for ggplot
+matrix_melted <- reshape2::melt(matrix_upper, na.rm = TRUE)  # Remove NA values during melt
+
+# Create the heatmap with ggplot2
+p <- ggplot(matrix_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = sprintf("%.2f", value)), color = "black") +  # Display values inside tiles
+  scale_fill_gradient(low = "white", high = "firebrick", limits = c(0, 1)) +  # Color scale
+  scale_x_discrete(position = "top") +
+  theme_classic() +
+  labs(title = "Concordance Index Between Iterations", x = "Iteration 1", y = "Iteration 2") #+
+  #theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+cowplot::ggsave2(file.path(dir_save, 'ConcordanceIndex_matrix.png'), p,
+                 units = 'cm',
+                 width = 18,
+                 height = 10)
+
+```

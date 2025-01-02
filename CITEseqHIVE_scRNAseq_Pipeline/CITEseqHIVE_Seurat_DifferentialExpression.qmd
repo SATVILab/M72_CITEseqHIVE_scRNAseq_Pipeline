@@ -1,0 +1,1419 @@
+---
+title: "CITEseq-HIVE Seurat Analysis for Differential Expression"
+format:
+  html:
+      code-fold: true
+editor: visual
+---
+
+## Description
+
+### Clear console
+
+```{r, output=FALSE}
+ls()
+rm(list=ls())
+```
+
+### Set output directory
+
+```{r}
+dir_save <- "output/dataset_full/"
+```
+
+### Load libraries
+
+```{r setup, message=FALSE}
+# CHECK THIS CONTAINS ONLY NECESSARY LIBRARIES
+library(SingleCellExperiment)
+library(Seurat)
+library(SeuratObject)
+library(dplyr)
+library(clustree)
+library(ggpubr)
+library(patchwork)
+library(magrittr)
+library(HGNChelper)
+library(openxlsx)
+library(multtest)
+library(metap)
+library(ggplot2)
+library(cowplot)
+library(readxl)
+library(devtools)
+library(shiny)
+```
+
+### Load the .Rdata file generated after RNA clustering only by CITEseqHIVE_Seurat_ClusterIDcells.qmd
+
+```{r}
+load("output/Seurat_ClusterIDCellsRNAonly_obj.Rdata")
+obj
+
+### Confirm Seruat object contains assays for RNA and ADT
+Assays(obj)
+```
+
+### Generate subset objs to use for comparisons
+
+```{r}
+obj_D0 <- subset(obj, subset = VISIT %in% c("D0"))
+obj_D37 <- subset(obj, subset = VISIT %in% c("D37"))
+obj_M72 <- subset(obj, subset = STIM %in% c("M72"))
+obj_UNSTIM <- subset(obj, subset = STIM %in% c("UNSTIM"))
+
+# Progenitor cells and HSC/MPP cells left out
+
+obj_D0_Lymphoid <- subset(obj_D0, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_D37_Lymphoid <- subset(obj_D37, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_M72_Lymphoid <- subset(obj_M72, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_UNSTIM_Lymphoid <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_Lymphoid <- subset(obj, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+
+obj_D0_Myeloid <- subset(obj_D0, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
+obj_D37_Myeloid <- subset(obj_D37, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
+obj_M72_Myeloid <- subset(obj_M72, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
+obj_UNSTIM_Myeloid <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
+obj_Myeloid <- subset(obj, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
+
+obj_D0_T <- subset(obj_D0, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_D37_T <- subset(obj_D37, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_M72_T <- subset(obj_M72, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_UNSTIM_T <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_T <- subset(obj, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+
+```
+
+### Define antigen-specific markers for RNA and ADT
+
+```{r}
+# Set list for genes used to identify antigen-specific T cells for RNA
+AS.genes_RNA <- c("CD3G", "CD4", "CD8A", "CD69", "CD40LG", "TNFRSF9", "IL2RA", "TNFRSF4", "HLA-DRA")
+
+# Set list for proteins used to identify antigen-specific T cells for ADT
+AS.genes_ADT <- c("CD3-UCHT1", "CD4-RPA.T4", "CD8", "CD69", "CD154", "CD137", "CD25", "CD134", "HLA.DR")
+
+# Function to add margins and subtitle to plots
+add_margins_and_subtitle <- function(plot, subtitle) {
+  plot + 
+    labs(subtitle = subtitle) + 
+    theme(plot.margin = unit(c(1, 1, 1, 3), "cm"), 
+          plot.subtitle = element_text(hjust = 0.5))
+}
+```
+
+### Examine expression of antigen-specific markers as RNA and ADT in T cells
+
+```{r, results = FALSE, message = FALSE, error = FALSE, eval = FALSE}
+# Violin plots
+
+# Plot violin plots of relative expression for RNA for all conditions
+DefaultAssay(obj_T) <- "RNA"
+vln_RNA <- VlnPlot(obj_T,
+                      features = AS.genes_RNA,
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+
+# Plot violin plots of relative expression for RNA for M72
+DefaultAssay(obj_M72_T) <- "RNA"
+vln_RNA_M72 <- VlnPlot(obj_M72_T,
+                       features = AS.genes_RNA,
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+
+# Plot violin plots of relative expression for RNA for UNSTIM
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+                       features = AS.genes_RNA,
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotRelExp_AS_TCells_RNA_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(AS.genes_RNA)) {
+  combined_plot <- plot_grid(vln_RNA[[i]], vln_RNA_M72[[i]], vln_RNA_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Plot violin plots of relative expression for ADT for all conditions
+DefaultAssay(obj_T) <- "ADT"
+vln_ADT <- VlnPlot(obj_T,
+                      features = AS.genes_ADT,
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_ADT <- lapply(vln_ADT, add_margins_and_subtitle, subtitle = "All ADT")
+
+# Plot violin plots of relative expression for ADT for M72
+DefaultAssay(obj_M72_T) <- "ADT"
+vln_ADT_M72 <- VlnPlot(obj_M72_T,
+                      features = AS.genes_ADT,
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_ADT_M72 <- lapply(vln_ADT_M72, add_margins_and_subtitle, subtitle = "M72 ADT")
+
+# Plot violin plots of relative expression for ADT for UNSTIM
+DefaultAssay(obj_UNSTIM_T) <- "ADT"
+vln_ADT_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+                       features = AS.genes_ADT,
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_ADT_UNSTIM <- lapply(vln_ADT_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM ADT")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotRelExp_AS_TCells_ADT_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(AS.genes_ADT)) {
+  combined_plot <- plot_grid(vln_ADT[[i]], vln_ADT_M72[[i]], vln_ADT_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Plot violin plots of counts for RNA for all conditions
+DefaultAssay(obj_T) <- "RNA"
+vln_RNA <- VlnPlot(obj_T,
+                      features = AS.genes_RNA,
+                      slot = "counts",
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+
+# Plot violin plots of counts for RNA for M72
+DefaultAssay(obj_M72_T) <- "RNA"
+vln_RNA_M72 <- VlnPlot(obj_M72_T,
+                      features = AS.genes_RNA,
+                      slot = "counts",
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+
+# Plot violin plots of counts for RNA for UNSTIM
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+                       features = AS.genes_RNA,
+                       slot = "counts",
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotCounts_AS_TCells_RNA_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(AS.genes_RNA)) {
+  combined_plot <- plot_grid(vln_RNA[[i]], vln_RNA_M72[[i]], vln_RNA_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Plot violin plots of counts for ADT for all conditions
+DefaultAssay(obj_T) <- "ADT"
+vln_ADT <- VlnPlot(obj_T,
+                      features = AS.genes_ADT,
+                      slot = "counts",
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_ADT <- lapply(vln_ADT, add_margins_and_subtitle, subtitle = "All ADT")
+
+# Plot violin plots of counts for ADT for M72
+DefaultAssay(obj_M72_T) <- "ADT"
+vln_M72_ADT <- VlnPlot(obj_M72_T,
+                      features = AS.genes_ADT,
+                      slot = "counts",
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_ADT_M72 <- lapply(vln_ADT_M72, add_margins_and_subtitle, subtitle = "M72 ADT")
+
+# Plot violin plots of counts for ADT for UNSTIM
+DefaultAssay(obj_UNSTIM_T) <- "ADT"
+vln_ADT_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+                       features = AS.genes_ADT,
+                       slot = "counts",
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_ADT_UNSTIM7 <- lapply(vln_ADT_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM ADT")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotCounts_AS_TCells_ADT_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(AS.genes_ADT)) {
+  combined_plot <- plot_grid(vln_ADT[[i]], vln_ADT_M72[[i]], vln_ADT_UNSTIM7[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Feature plots
+
+# Plot feature plots of relative expression for RNA
+DefaultAssay(obj_T) <- "RNA"
+feature_plot_RNA <- lapply(AS.genes_RNA, function(gene) {
+  plots <- FeaturePlot(obj_T,
+                       features = gene, 
+                       label = TRUE,
+                       label.size = 4,
+                       split.by = "VISIT_STIM",
+                       pt.size = 0,
+                       combine = FALSE)
+  lapply(plots, add_margins_and_subtitle, subtitle = "RNA")
+})
+
+# Combine plots each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_FeaturePlot_AS_TCells_RNA_STIM.pdf"), height = 14, width = 15)
+for (i in seq_along(AS.genes_RNA)) {
+  combined_plot <- plot_grid(plotlist = feature_plot_RNA[[i]], ncol = 2, align = "h")
+  print(combined_plot)
+}
+dev.off()
+
+# Plot feature plots of relative expression for ADT
+DefaultAssay(obj_T) <- "ADT"
+feature_plot_ADT <- lapply(AS.genes_ADT, function(gene) {
+  plots <- FeaturePlot(obj_T,
+                       features = gene, 
+                       label = TRUE,
+                       label.size = 4,
+                       split.by = "VISIT_STIM",
+                       pt.size = 0,
+                       combine = FALSE)
+  lapply(plots, add_margins_and_subtitle, subtitle = "ADT")
+})
+
+# Combine plots each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_FeaturePlot_AS_TCells_ADT_STIM.pdf"), height = 14, width = 15)
+for (i in seq_along(AS.genes_ADT)) {
+  combined_plot <- plot_grid(plotlist = feature_plot_RNA[[i]], ncol = 2, align = "h")
+  print(combined_plot)
+}
+dev.off()
+```
+
+### Create Interactive Plots - Antigen Specific Markers 
+
+```{shinylive-r}
+#| standalone: true
+
+# Set list for genes used to identify antigen-specific T cells
+AS.genes_RNA <- c("CD3G", "CD4", "CD8A", "CD69", "CD40LG", "TNFRSF9", "IL2RA", "TNFRSF4", "HLA-DRA")
+
+# Set default assay
+DefaultAssay(obj_T) <- "RNA"
+DefaultAssay(obj_M72_T) <- "RNA"
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+
+# Define UI for the Shiny app
+ui = fluidPage(
+  titlePanel("Interactive Plot - Relative Expression of Antigen Specific Genes on T cells"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("gene", "Select Gene:", choices = AS.genes_RNA)
+    ),
+    mainPanel(
+      plotOutput("violinPlot")
+    )
+  )
+)
+
+# Define server logic for the Shiny appGene:", choices = AS.genes_RNA)    sidebarPanel(
+server = function(input, output) {
+    ),  output$violinPlot <- renderPlot({
+    mainPanel(
+      plotOutput("violinPlot")
+    )    VlnPlot(obj_T, features = input$gene, combine = FALSE)
+  })
+}
+
+# Run the Shiny appfor the Shiny app
+shinyApp(ui, server)
+  output$violinPlot <- renderPlot({
+    # Subset the data based on selected gene
+    gene <- input$gene
+    obj_T_subset <- subset(obj_T, subset = RNA_sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells"))
+        vln_RNA <- VlnPlot(obj_T, 
+                         features = input$gene,
+                         split.by = "VISIT",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")    # Plot violin plot
+    VlnPlot(obj_T_subset, features = gene, combine = FALSE)
+  })
+}<- VlnPlot(obj_M72_T, 
+
+# Run the Shiny app
+shinyApp(ui, server)
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+    
+    vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_T, 
+                         features = input$gene,
+                         split.by = "VISIT",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+    
+    # Combine the plots into a single column
+    combined_plot <- wrap_plots(
+      plotlist = c(vln_RNA, vln_RNA_M72, vln_RNA_UNSTIM), ncol = 1
+  )
+  
+    combined_plot
+  }, height = 1200, width = 1200) # Set the height and width of the plot
+}
+
+# Run the Shiny app
+shinyApp(ui, server)
+```
+
+```{r}
+#| context: server
+
+# Set list for proteins used to identify antigen-specific T cells for RNA
+AS.genes_ADT <- c("CD3-UCHT1", "CD4-RPA.T4", "CD8", "CD69", "CD154", "CD137", "CD25", "CD134", "HLA.DR")
+
+# Set default assay
+DefaultAssay(obj_T) <- "ADT"
+DefaultAssay(obj_M72_T) <- "ADT"
+DefaultAssay(obj_UNSTIM_T) <- "ADT"
+
+# Define UI for the Shiny app
+ui <- fluidPage(
+  titlePanel("Interactive Violin Plot - Relative Expression of Antigen Specific Proteins on T cells"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("protein", "Select Protein:", choices = AS.genes_ADT)
+    ),
+    mainPanel(
+      plotOutput("violinPlot", height = "1200px", width = "1200px")
+    )
+  )
+)
+
+# Define server logic for the Shiny app
+server <- function(input, output) {
+  output$violinPlot <- renderPlot({
+    vln_ADT <- VlnPlot(obj_T, 
+                         features = input$protein,
+                         split.by = "VISIT",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_ADT <- lapply(vln_ADT, add_margins_and_subtitle, subtitle = "All ADT")
+    
+    vln_ADT_M72 <- VlnPlot(obj_M72_T, 
+                         features = input$protein,
+                         split.by = "VISIT",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_ADT_M72 <- lapply(vln_ADT_M72, add_margins_and_subtitle, subtitle = "M72 ADT")
+    
+    vln_ADT_UNSTIM <- VlnPlot(obj_UNSTIM_T, 
+                         features = input$protein,
+                         split.by = "VISIT",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_ADT_UNSTIM <- lapply(vln_ADT_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM ADT")
+    
+    # Combine the plots into a single column
+    combined_plot <- wrap_plots(
+      plotlist = c(vln_ADT, vln_ADT_M72, vln_ADT_UNSTIM), ncol = 1
+    )
+    
+    combined_plot
+  }, height = 1200, width = 1200) # Set the height and width of the plot
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+```
+
+```{r}
+#| context: server
+
+# Set list for genes used to identify antigen-specific T cells
+AS.genes_RNA <- c("CD3G", "CD4", "CD8A", "CD69", "CD40LG", "TNFRSF9", "IL2RA", "TNFRSF4", "HLA-DRA")
+
+# Set default assay
+DefaultAssay(obj_T) <- "RNA"
+DefaultAssay(obj_M72_T) <- "RNA"
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+
+# Define UI for the Shiny app
+ui <- fluidPage(
+  titlePanel("Interactive Violin Plot - Counts of Antigen Specific Genes on T cells"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("gene", "Select Gene:", choices = AS.genes_RNA)
+    ),
+    mainPanel(
+      plotOutput("violinPlot", height = "1200px", width = "1200px")
+    )
+  )
+)
+
+# Define server logic for the Shiny app
+server <- function(input, output) {
+  output$violinPlot <- renderPlot({
+    vln_RNA <- VlnPlot(obj_T, 
+                         features = input$gene,
+                         split.by = "VISIT",
+                         slot = "counts",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+    
+    vln_RNA_M72 <- VlnPlot(obj_M72_T, 
+                         features = input$gene,
+                         split.by = "VISIT",
+                         slot = "counts",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+    
+    vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_T, 
+                         features = input$gene,
+                         split.by = "VISIT",
+                         slot = "counts",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+    
+    # Combine the plots into a single column
+    combined_plot <- wrap_plots(
+      plotlist = c(vln_RNA, vln_RNA_M72, vln_RNA_UNSTIM), ncol = 1
+    )
+    
+    combined_plot
+  }, height = 1200, width = 1200) # Set the height and width of the plot
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+```
+
+```{r}
+#| context: server
+
+# Set list for proteins used to identify antigen-specific T cells for RNA
+AS.genes_ADT <- c("CD3-UCHT1", "CD4-RPA.T4", "CD8", "CD69", "CD154", "CD137", "CD25", "CD134", "HLA.DR")
+
+# Set default assay
+DefaultAssay(obj_T) <- "ADT"
+DefaultAssay(obj_M72_T) <- "ADT"
+DefaultAssay(obj_UNSTIM_T) <- "ADT"
+
+# Define UI for the Shiny app
+ui <- fluidPage(
+  titlePanel("Interactive Violin Plot - Relative Expression of Antigen Specific Proteins on T cells"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("protein", "Select Protein:", choices = AS.genes_ADT)
+    ),
+    mainPanel(
+      plotOutput("violinPlot", height = "1200px", width = "1200px")
+    )
+  )
+)
+
+# Define server logic for the Shiny app
+server <- function(input, output) {
+  output$violinPlot <- renderPlot({
+    vln_ADT <- VlnPlot(obj_T, 
+                         features = input$protein,
+                         split.by = "VISIT",
+                         slot = "counts",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_ADT <- lapply(vln_ADT, add_margins_and_subtitle, subtitle = "All ADT")
+    
+    vln_ADT_M72 <- VlnPlot(obj_M72_T, 
+                         features = input$protein,
+                         split.by = "VISIT",
+                         slot = "counts",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_ADT_M72 <- lapply(vln_ADT_M72, add_margins_and_subtitle, subtitle = "M72 ADT")
+    
+    vln_ADT_UNSTIM <- VlnPlot(obj_UNSTIM_T, 
+                         features = input$protein,
+                         split.by = "VISIT",
+                         slot = "counts",
+                         group.by = "sctype_classification",
+                         log = TRUE,
+                         pt.size = 0,
+                         combine = FALSE)
+    vln_ADT_UNSTIM <- lapply(vln_ADT_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM ADT")
+    
+    # Combine the plots into a single column
+    combined_plot <- wrap_plots(
+      plotlist = c(vln_ADT, vln_ADT_M72, vln_ADT_UNSTIM), ncol = 1
+    )
+    
+    combined_plot
+  }, height = 1200, width = 1200) # Set the height and width of the plot
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+```
+
+```{r}
+#| context: server
+
+# Set default assay
+DefaultAssay(obj_T) <- "RNA"
+
+# Define UI for the Shiny app
+ui <- fluidPage(
+  titlePanel("Interactive Feature Plot - Antigen Specific Genes on T cells"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("gene", "Select Gene:", choices = AS.genes_RNA)
+    ),
+    mainPanel(
+      plotOutput("featurePlot", height = "800px", width = "1000px")
+    )
+  )
+)
+
+# Define server logic for the Shiny app
+server <- function(input, output) {
+  output$featurePlot <- renderPlot({
+    plots <- FeaturePlot(obj_T, 
+                         features = input$gene,
+                         label = TRUE,
+                         split.by = "VISIT_STIM",
+                         pt.size = 0,
+                         combine = FALSE)
+    wrap_plots(plots, ncol = 2) 
+  }, height = 800, width = 1000) # Set the height and width of the plot
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+```
+
+```{r}
+#| context: server
+
+# Set default assay
+DefaultAssay(obj_T) <- "ADT"
+
+# Define UI for the Shiny app
+ui <- fluidPage(
+  titlePanel("Interactive Feature Plot - Antigen Specific Proteins on T cells"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("protein", "Select Protein:", choices = AS.genes_ADT)
+    ),
+    mainPanel(
+      plotOutput("featurePlot", height = "800px", width = "1000px")
+    )
+  )
+)
+
+# Define server logic for the Shiny app
+server <- function(input, output) {
+  output$featurePlot <- renderPlot({
+    plots <- FeaturePlot(obj_T, 
+                         features = input$protein,
+                         label = TRUE,
+                         split.by = "VISIT_STIM",
+                         pt.size = 0,
+                         combine = FALSE)
+    wrap_plots(plots, ncol = 2) 
+  }, height = 800, width = 1000) # Set the height and width of the plot
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+```
+
+### Define interferon-stimulated genes for RNA
+
+```{r}
+# Set list of interferon-stimulated genes
+IS.genes_RNA <- c("STAT1", "GBP1", "GBP2", "GBP5", "SERPING1", "IFNG", "ANKRD22", "IRF1", "IRF7", "IRF8", "NOD2", "TNF", "BATF2", "FCGR1A", "OAS1", "MX1", "IFIT1", "IFIT2", "IFIT3", "IFIT5", "ISG15", "CCL3", "CCL4", "RSAD2", "OASL", "CXCL10", "IFI44", "ISG20")
+```
+
+### Examine expression of interferon-stimulated genes on all RNA clusters
+
+```{r, results = FALSE, message = FALSE, error = FALSE, eval = FALSE}
+# Violin plots
+
+# Plot violin plots of relative expression for RNA for all conditions
+DefaultAssay(obj) <- "RNA"
+vln_RNA <- VlnPlot(obj,
+                      features = IS.genes_RNA,
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+
+# Plot violin plots of relative expression for RNA for M72
+DefaultAssay(obj_M72) <- "RNA"
+vln_RNA_M72 <- VlnPlot(obj_M72,
+                      features = IS.genes_RNA,
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+
+# Plot violin plots of relative expression for RNA for UNSTIM
+DefaultAssay(obj_UNSTIM) <- "RNA"
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM,
+                       features = IS.genes_RNA,
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotRelExp_IS_AllCells_RNA_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(vln_RNA[[i]], vln_RNA_M72[[i]], vln_RNA_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Plot violin plots of counts for RNA for all conditions
+DefaultAssay(obj) <- "RNA"
+vln_RNA <- VlnPlot(obj,
+                      features = IS.genes_RNA,
+                      slot = "counts",
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+
+# Plot violin plots of counts for RNA for M72
+DefaultAssay(obj_M72) <- "RNA"
+vln_RNA_M72 <- VlnPlot(obj_M72,
+                      features = IS.genes_RNA,
+                      slot = "counts",
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+
+# Plot violin plots of counts for RNA for UNSTIM
+DefaultAssay(obj_UNSTIM) <- "RNA"
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM,
+                       features = IS.genes_RNA,
+                       slot = "counts",
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotCounts_IS_AllCells_RNA_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(vln_RNA[[i]], vln_RNA_M72[[i]], vln_RNA_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Feature plots
+
+# Plot feature plots of relative expression for RNA
+DefaultAssay(obj) <- "RNA"
+feature_plot_RNA <- lapply(IS.genes_RNA, function(gene) {
+  plots <- FeaturePlot(obj,
+                       features = gene, 
+                       label = TRUE,
+                       label.size = 4,
+                       split.by = "VISIT_STIM",
+                       pt.size = 0,
+                       combine = FALSE)
+  lapply(plots, add_margins_and_subtitle, subtitle = "RNA")
+})
+
+# Combine plots each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_FeaturePlot_IS_AllCells_RNA_STIM.pdf"), height = 14, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(plotlist = feature_plot_RNA[[i]], ncol = 2, align = "h")
+  print(combined_plot)
+}
+dev.off()
+```
+
+### Examine expression of interferon-stimulated genes on Myeloid clusters
+
+```{r, results = FALSE, message = FALSE, error = FALSE, eval = FALSE}
+# Violin plots
+
+# Plot violin plots of relative expression for RNA for all conditions
+DefaultAssay(obj_Myeloid) <- "RNA"
+vln_RNA <- VlnPlot(obj_Myeloid,
+                      features = IS.genes_RNA,
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+
+# Plot violin plots of relative expression for RNA for M72
+DefaultAssay(obj_M72_Myeloid) <- "RNA"
+vln_RNA_M72 <- VlnPlot(obj_M72_Myeloid,
+                      features = IS.genes_RNA,
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+
+# Plot violin plots of relative expression for RNA for UNSTIM
+DefaultAssay(obj_UNSTIM_Myeloid) <- "RNA"
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_Myeloid,
+                       features = IS.genes_RNA,
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotRelExp_IS_MyeloidCells_RNA_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(vln_RNA[[i]], vln_RNA_M72[[i]], vln_RNA_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Plot violin plots of counts for RNA for all conditions
+DefaultAssay(obj_Myeloid) <- "RNA"
+vln_RNA <- VlnPlot(obj_Myeloid,
+                      features = IS.genes_RNA,
+                      slot = "counts",
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+
+# Plot violin plots of counts for RNA for M72
+DefaultAssay(obj_M72_Myeloid) <- "RNA"
+vln_RN_M72 <- VlnPlot(obj_M72_Myeloid,
+                      features = IS.genes_RNA,
+                      slot = "counts",
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+
+# Plot violin plots of counts for RNA for UNSTIM
+DefaultAssay(obj_UNSTIM_Myeloid) <- "RNA"
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_Myeloid,
+                       features = IS.genes_RNA,
+                       slot = "counts",
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotCounts_IS_MyeloidCells_RNA_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(vln_RNA[[i]], vln_RNA_M72[[i]], vln_RNA_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Feature plots
+
+# Plot feature plots of relative expression for RNA
+DefaultAssay(obj_Myeloid) <- "RNA"
+feature_plot_RNA <- lapply(IS.genes_RNA, function(gene) {
+  plots <- FeaturePlot(obj_Myeloid,
+                       features = gene, 
+                       label = TRUE,
+                       label.size = 4,
+                       split.by = "VISIT_STIM",
+                       pt.size = 0,
+                       combine = FALSE)
+  lapply(plots, add_margins_and_subtitle, subtitle = "RNA")
+})
+
+# Combine plots each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_FeaturePlot_IS_MyeloidCells_RNA_STIM.pdf"), height = 14, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(plotlist = feature_plot_RNA[[i]], ncol = 2, align = "h")
+  print(combined_plot)
+}
+dev.off()
+```
+
+### Examine expression of interferon-stimulated genes on Lymphoid clusters
+
+```{r, results = FALSE, message = FALSE, error = FALSE, eval = FALSE}
+# Violin plots
+
+# Plot violin plots of relative expression for RNA for all conditions
+DefaultAssay(obj_Lymphoid) <- "RNA"
+vln_RNA <- VlnPlot(obj_Lymphoid,
+                   features = IS.genes_RNA,
+                   split.by = "VISIT",
+                   group.by = "sctype_classification",
+                   log = TRUE,
+                   pt.size = 0,
+                   combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+
+# Plot violin plots of relative expression for RNA for M72
+DefaultAssay(obj_M72_Lymphoid) <- "RNA"
+vln_RNA_M72 <- VlnPlot(obj_M72_Lymphoid,
+                       features = IS.genes_RNA,
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+
+# Plot violin plots of relative expression for RNA for UNSTIM
+DefaultAssay(obj_UNSTIM_Lymphoid) <- "RNA"
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_Lymphoid,
+                          features = IS.genes_RNA,
+                          split.by = "VISIT",
+                          group.by = "sctype_classification",
+                          log = TRUE,
+                          pt.size = 0,
+                          combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotRelExp_IS_LymphoidCells_RNA_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(vln_RNA[[i]], vln_RNA_M72[[i]], vln_RNA_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Plot violin plots of counts for RNA for all conditions
+DefaultAssay(obj_Lymphoid) <- "RNA"
+vln_RNA <- VlnPlot(obj_Lymphoid,
+                   features = IS.genes_RNA,
+                   slot = "counts",
+                   split.by = "VISIT",
+                   group.by = "sctype_classification",
+                   log = TRUE,
+                   pt.size = 0,
+                   combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+
+# Plot violin plots of counts for RNA for M72
+DefaultAssay(obj_M72_Lymphoid) <- "RNA"
+vln_RN_M72 <- VlnPlot(obj_M72_Lymphoid,
+                      features = IS.genes_RNA,
+                      slot = "counts",
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+
+# Plot violin plots of counts for RNA for UNSTIM
+DefaultAssay(obj_UNSTIM_Lymphoid) <- "RNA"
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_Lymphoid,
+                          features = IS.genes_RNA,
+                          slot = "counts",
+                          split.by = "VISIT",
+                          group.by = "sctype_classification",
+                          log = TRUE,
+                          pt.size = 0,
+                          combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotCounts_IS_LymphoidCells_RNA_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(vln_RNA[[i]], vln_RNA_M72[[i]], vln_RNA_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Feature plots
+
+# Plot feature plots of relative expression for RNA
+DefaultAssay(obj_Lymphoid) <- "RNA"
+feature_plot_RNA <- lapply(IS.genes_RNA, function(gene) {
+  plots <- FeaturePlot(obj_Lymphoid,
+                       features = gene, 
+                       label = TRUE,
+                       label.size = 4,
+                       split.by = "VISIT_STIM",
+                       pt.size = 0,
+                       combine = FALSE)
+  lapply(plots, add_margins_and_subtitle, subtitle = "RNA")
+})
+
+# Combine plots each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_FeaturePlot_IS_LymphoidCells_RNA_STIM.pdf"), height = 14, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(plotlist = feature_plot_RNA[[i]], ncol = 2, align = "h")
+  print(combined_plot)
+}
+dev.off()
+```
+
+### Examine expression of interferon-stimulated genes on T cell clusters
+
+```{r, results = FALSE, message = FALSE, error = FALSE, eval = FALSE}
+# Violin plots
+
+# Plot violin plots of relative expression for RNA for all conditions
+DefaultAssay(obj_T) <- "RNA"
+vln_RNA <- VlnPlot(obj_T,
+                   features = IS.genes_RNA,
+                   split.by = "VISIT",
+                   group.by = "sctype_classification",
+                   log = TRUE,
+                   pt.size = 0,
+                   combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+
+# Plot violin plots of relative expression for RNA for M72
+DefaultAssay(obj_M72_T) <- "RNA"
+vln_RNA_M72 <- VlnPlot(obj_M72_T,
+                       features = IS.genes_RNA,
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+
+# Plot violin plots of relative expression for RNA for UNSTIM
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+                          features = IS.genes_RNA,
+                          split.by = "VISIT",
+                          group.by = "sctype_classification",
+                          log = TRUE,
+                          pt.size = 0,
+                          combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotRelExp_IS_TCells_RNA_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(vln_RNA[[i]], vln_RNA_M72[[i]], vln_RNA_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Plot violin plots of counts for RNA for all conditions
+DefaultAssay(obj_T) <- "RNA"
+vln_RNA <- VlnPlot(obj_T,
+                   features = IS.genes_RNA,
+                   slot = "counts",
+                   split.by = "VISIT",
+                   group.by = "sctype_classification",
+                   log = TRUE,
+                   pt.size = 0,
+                   combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+
+# Plot violin plots of counts for RNA for M72
+DefaultAssay(obj_M72_T) <- "RNA"
+vln_RN_M72 <- VlnPlot(obj_M72_T,
+                      features = IS.genes_RNA,
+                      slot = "counts",
+                      split.by = "VISIT",
+                      group.by = "sctype_classification",
+                      log = TRUE,
+                      pt.size = 0,
+                      combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+
+# Plot violin plots of counts for RNA for UNSTIM
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+                          features = IS.genes_RNA,
+                          slot = "counts",
+                          split.by = "VISIT",
+                          group.by = "sctype_classification",
+                          log = TRUE,
+                          pt.size = 0,
+                          combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+
+# Combine plots from both objects for each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_VlnPlotCounts_IS_TCells_RNA_STIM.pdf"), height = 20, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(vln_RNA[[i]], vln_RNA_M72[[i]], vln_RNA_UNSTIM[[i]], ncol = 1, rel_heights = c(0.5, 0.5))
+  print(combined_plot)
+}
+dev.off()
+
+# Feature plots
+
+# Plot feature plots of relative expression for RNA
+DefaultAssay(obj_T) <- "RNA"
+feature_plot_RNA <- lapply(IS.genes_RNA, function(gene) {
+  plots <- FeaturePlot(obj_T,
+                       features = gene, 
+                       label = TRUE,
+                       label.size = 4,
+                       split.by = "VISIT_STIM",
+                       pt.size = 0,
+                       combine = FALSE)
+  lapply(plots, add_margins_and_subtitle, subtitle = "RNA")
+})
+
+# Combine plots each gene and save to PDF
+pdf(file = paste0(dir_save, "Multimodal_DEG_FeaturePlot_IS_TCells_RNA_STIM.pdf"), height = 14, width = 15)
+for (i in seq_along(IS.genes_RNA)) {
+  combined_plot <- plot_grid(plotlist = feature_plot_RNA[[i]], ncol = 2, align = "h")
+  print(combined_plot)
+}
+dev.off()
+```
+
+### Create Interactive Plots - Interferon Stimulated Markers
+
+```{r}
+#| context: server
+
+# Set default assay
+DefaultAssay(obj) <- "RNA"
+DefaultAssay(obj_M72) <- "RNA"
+DefaultAssay(obj_UNSTIM) <- "RNA"
+
+DefaultAssay(obj_Myeloid) <- "RNA"
+DefaultAssay(obj_M72_Myeloid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Myeloid) <- "RNA"
+
+DefaultAssay(obj_Lymphoid) <- "RNA"
+DefaultAssay(obj_M72_Lymphoid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Lymphoid) <- "RNA"
+
+DefaultAssay(obj_T) <- "RNA"
+DefaultAssay(obj_M72_T) <- "RNA"
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+
+# Define UI for the Shiny app
+ui <- fluidPage(
+  titlePanel("Interactive Violin Plot - Relative Expression of Interferon Stimulated Genes"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("cell_type", "Select Cell Type:", 
+                  choices = c("T cells", "Myeloid", "Lymphoid", "All Cells")),
+      selectInput("gene", "Select Gene:", choices = IS.genes_RNA)
+    ),
+    mainPanel(
+      plotOutput("violinPlot", height = "1200px", width = "1200px")
+    )
+  )
+)
+
+# Define server logic for the Shiny app
+server <- function(input, output) {
+  output$violinPlot <- renderPlot({
+    # Select Seurat objects based on selected cell type
+    if (input$cell_type == "T cells") {
+      obj1 <- obj_T
+      obj2 <- obj_M72_T
+      obj3 <- obj_UNSTIM_T
+    } else if (input$cell_type == "Myeloid") {
+      obj1 <- obj_Myeloid
+      obj2 <- obj_M72_Myeloid
+      obj3 <- obj_UNSTIM_Myeloid
+    } else if (input$cell_type == "Lymphoid") {
+      obj1 <- obj_Lymphoid
+      obj2 <- obj_M72_Lymphoid
+      obj3 <- obj_UNSTIM_Lymphoid
+    } else if (input$cell_type == "All Cells") {
+      obj1 <- obj
+      obj2 <- obj_M72
+      obj3 <- obj_UNSTIM
+    }
+    
+    # Generate violin plots for each condition and combine them
+    vln_RNA <- VlnPlot(obj1, 
+                       features = input$gene,
+                       split.by = "VISIT",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+    vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+    
+    vln_RNA_M72 <- VlnPlot(obj2, 
+                           features = input$gene,
+                           split.by = "VISIT",
+                           group.by = "sctype_classification",
+                           log = TRUE,
+                           pt.size = 0,
+                           combine = FALSE)
+    vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+    
+    vln_RNA_UNSTIM <- VlnPlot(obj3, 
+                              features = input$gene,
+                              split.by = "VISIT",
+                              group.by = "sctype_classification",
+                              log = TRUE,
+                              pt.size = 0,
+                              combine = FALSE)
+    vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+    
+    # Combine the plots into a single column
+    combined_plot <- wrap_plots(
+      plotlist = c(vln_RNA, vln_RNA_M72, vln_RNA_UNSTIM), ncol = 1
+    )
+    
+    combined_plot
+  }, height = 1200, width = 1200)  # Set the height and width of the plot
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+
+```
+
+```{r}
+#| context: server
+
+# Set default assay
+DefaultAssay(obj) <- "RNA"
+DefaultAssay(obj_M72) <- "RNA"
+DefaultAssay(obj_UNSTIM) <- "RNA"
+
+DefaultAssay(obj_Myeloid) <- "RNA"
+DefaultAssay(obj_M72_Myeloid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Myeloid) <- "RNA"
+
+DefaultAssay(obj_Lymphoid) <- "RNA"
+DefaultAssay(obj_M72_Lymphoid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Lymphoid) <- "RNA"
+
+DefaultAssay(obj_T) <- "RNA"
+DefaultAssay(obj_M72_T) <- "RNA"
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+
+# Define UI for the Shiny app
+ui <- fluidPage(
+  titlePanel("Interactive Violin Plot - Counts of Interferon Stimulated Genes"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("cell_type", "Select Cell Type:", 
+                  choices = c("T cells", "Myeloid", "Lymphoid", "All Cells")),
+      selectInput("gene", "Select Gene:", choices = IS.genes_RNA)
+    ),
+    mainPanel(
+      plotOutput("violinPlot", height = "1200px", width = "1200px")
+    )
+  )
+)
+
+# Define server logic for the Shiny app
+server <- function(input, output) {
+  output$violinPlot <- renderPlot({
+    # Select Seurat objects based on selected cell type
+    if (input$cell_type == "T cells") {
+      obj1 <- obj_T
+      obj2 <- obj_M72_T
+      obj3 <- obj_UNSTIM_T
+    } else if (input$cell_type == "Myeloid") {
+      obj1 <- obj_Myeloid
+      obj2 <- obj_M72_Myeloid
+      obj3 <- obj_UNSTIM_Myeloid
+    } else if (input$cell_type == "Lymphoid") {
+      obj1 <- obj_Lymphoid
+      obj2 <- obj_M72_Lymphoid
+      obj3 <- obj_UNSTIM_Lymphoid
+    } else if (input$cell_type == "All Cells") {
+      obj1 <- obj
+      obj2 <- obj_M72
+      obj3 <- obj_UNSTIM
+    }
+    
+    # Generate violin plots for each condition and combine them
+    vln_RNA <- VlnPlot(obj1, 
+                       features = input$gene,
+                       split.by = "VISIT",
+                       slot = "counts",
+                       group.by = "sctype_classification",
+                       log = TRUE,
+                       pt.size = 0,
+                       combine = FALSE)
+    vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+    
+    vln_RNA_M72 <- VlnPlot(obj2, 
+                           features = input$gene,
+                           split.by = "VISIT",
+                           slot = "counts",
+                           group.by = "sctype_classification",
+                           log = TRUE,
+                           pt.size = 0,
+                           combine = FALSE)
+    vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+    
+    vln_RNA_UNSTIM <- VlnPlot(obj3, 
+                              features = input$gene,
+                              split.by = "VISIT",
+                              slot = "counts",
+                              group.by = "sctype_classification",
+                              log = TRUE,
+                              pt.size = 0,
+                              combine = FALSE)
+    vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+    
+    # Combine the plots into a single column
+    combined_plot <- wrap_plots(
+      plotlist = c(vln_RNA, vln_RNA_M72, vln_RNA_UNSTIM), ncol = 1
+    )
+    
+    combined_plot
+  }, height = 1200, width = 1200)  # Set the height and width of the plot
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+
+```
+
+```{r}
+#| context: server
+
+# Set default assay
+DefaultAssay(obj) <- "RNA"
+DefaultAssay(obj_Myeloid) <- "RNA"
+DefaultAssay(obj_Lymphoid) <- "RNA"
+DefaultAssay(obj_T) <- "RNA"
+
+# Define UI for the Shiny app
+ui <- fluidPage(
+  titlePanel("Interactive Feature Plot - Interferon Stimulated Genes"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("cell_type", "Select Cell Type:", 
+                  choices = c("T cells", "Myeloid", "Lymphoid", "All Cells")),
+      selectInput("gene", "Select Gene:", choices = IS.genes_RNA)
+    ),
+    mainPanel(
+      plotOutput("violinPlot", height = "1200px", width = "1200px")
+    )
+  )
+)
+
+# Define server logic for the Shiny app
+server <- function(input, output) {
+  output$violinPlot <- renderPlot({
+    # Select Seurat objects based on selected cell type
+    if (input$cell_type == "T cells") {
+      obj1 <- obj_T
+    } else if (input$cell_type == "Myeloid") {
+      obj1 <- obj_Myeloid
+    } else if (input$cell_type == "Lymphoid") {
+      obj1 <- obj_Lymphoid
+    } else if (input$cell_type == "All Cells") {
+      obj1 <- obj
+    }
+    
+    # Generate violin plots for each condition and combine them
+    plots <- FeaturePlot(obj1, 
+                         features = input$gene,
+                         label = TRUE,
+                         split.by = "VISIT_STIM",
+                         pt.size = 0,
+                         combine = FALSE)
+    wrap_plots(plots, ncol = 2) 
+  }, height = 800, width = 1000) # Set the height and width of the plot
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+```
+
+########################## NEXT STUFF TO DO - LOOK FOR TOP 10 DEGS BETWEEN VACCINEE AND PLACEBO FOR EACH CELL TYPE THEN PLOT FOR THAT CELL TYPE GROUP FOR ALL CONDITIONS, M72, AND UNSTIM, D0 VS D37. ALSO ADD INTERACTIVE PLOT FOR FEATURE PLOTS AND VIOLIN PLOTS FOR ALL PROTEINS AND GENE EQUIVALENTS IN THE CITESEQ PANEL
+
+### Save environment object as new .Rdata file
+
+```{r}
+############# SAVE ALL FILES
+save(obj, file = paste0(dir_save, "Seurat_DifferentialExpression_obj.Rdata"))
+saveRDS(obj, file = paste0(dir_save, "Seurat_DifferentialExpression_obj.rds"))
+```
+
+## Document software
+
+```{r}
+sessionInfo()
+```

@@ -2,3 +2,11 @@
 data/
 output/
 _book/
+CITEseqHIVE_Seurat_FilterMergeQC_files/
+CITEseqHIVE_TerraWorkflows_files/
+CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_traintestfull_files/
+CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_files/
+datatransfer_template.xlsx
+TestScript_Experiment4 1.R
+
+

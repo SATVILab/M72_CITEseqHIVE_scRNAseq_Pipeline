@@ -8,8 +8,15 @@ book:
   chapters:
     - index.qmd
     - intro.qmd
-    - CITEseqHIVE_Seurat_FilterMergeQC.qmd
-    - CITEseqHIVE_Seurat_ClusterIDcells.qmd
+    - CITEseqHIVE_DataTransfer.qmd
+    - CITEseqHIVE_TerraWorkflows.qmd
+    #- CITEseqHIVE_Seurat_FilterMergeQC_train.qmd
+    #- CITEseqHIVE_Seurat_FilterMergeQC_test.qmd
+    - CITEseqHIVE_Seurat_FilterMergeQC_full.qmd
+    #- CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_train.qmd
+    #- CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_test.qmd
+    - CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_full.qmd
+    #- CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_traintestfull.qmd
     - summary.qmd
     - references.qmd
 
@@ -18,8 +25,9 @@ bibliography: references.bib
 format:
   html:
     theme: cosmo
-  pdf:
-    documentclass: scrreprt
+  #pdf:
+    #documentclass: scrreprt
+
 
 
 

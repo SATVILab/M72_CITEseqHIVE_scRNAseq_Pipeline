@@ -1,0 +1,512 @@
+# Define UI for the Shiny app
+ui <- fluidPage(
+titlePanel("Interactive Violin Plot - Relative Expression of Antigen Specific Proteins on T cells"),
+sidebarLayout(
+sidebarPanel(
+selectInput("protein", "Select Protein:", choices = AS.genes_ADT)
+),
+mainPanel(
+plotOutput("violinPlot", height = "1200px", width = "1200px")
+)
+)
+)
+# Define server logic for the Shiny app
+server <- function(input, output) {
+output$violinPlot <- renderPlot({
+vln_ADT <- VlnPlot(obj_T,
+features = input$protein,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_ADT <- lapply(vln_ADT, add_margins_and_subtitle, subtitle = "All ADT")
+vln_ADT_M72 <- VlnPlot(obj_M72_T,
+features = input$protein,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_ADT_M72 <- lapply(vln_ADT_M72, add_margins_and_subtitle, subtitle = "M72 ADT")
+vln_ADT_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+features = input$protein,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_ADT_UNSTIM <- lapply(vln_ADT_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM ADT")
+# Combine the plots into a single column
+combined_plot <- wrap_plots(
+plotlist = c(vln_ADT, vln_ADT_M72, vln_ADT_UNSTIM), ncol = 1
+)
+combined_plot
+}, height = 1200, width = 1200) # Set the height and width of the plot
+}
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+# Set default assay
+DefaultAssay(obj_T) <- "RNA"
+DefaultAssay(obj_M72_T) <- "RNA"
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+# Define UI for the Shiny app
+ui <- fluidPage(
+titlePanel("Interactive Violin Plot - Counts of Antigen Specific Genes on T cells"),
+sidebarLayout(
+sidebarPanel(
+selectInput("gene", "Select Gene:", choices = AS.genes_RNA)
+),
+mainPanel(
+plotOutput("violinPlot", height = "1200px", width = "1200px")
+)
+)
+)
+# Define server logic for the Shiny app
+server <- function(input, output) {
+output$violinPlot <- renderPlot({
+vln_RNA <- VlnPlot(obj_T,
+features = input$gene,
+split.by = "VISIT",
+slot = "counts",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+vln_RNA_M72 <- VlnPlot(obj_M72_T,
+features = input$gene,
+split.by = "VISIT",
+slot = "counts",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+features = input$gene,
+split.by = "VISIT",
+slot = "counts",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+# Combine the plots into a single column
+combined_plot <- wrap_plots(
+plotlist = c(vln_RNA, vln_RNA_M72, vln_RNA_UNSTIM), ncol = 1
+)
+combined_plot
+}, height = 1200, width = 1200) # Set the height and width of the plot
+}
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+# Set default assay
+DefaultAssay(obj_T) <- "ADT"
+DefaultAssay(obj_M72_T) <- "ADT"
+DefaultAssay(obj_UNSTIM_T) <- "ADT"
+# Define UI for the Shiny app
+ui <- fluidPage(
+titlePanel("Interactive Violin Plot - Relative Expression of Antigen Specific Proteins on T cells"),
+sidebarLayout(
+sidebarPanel(
+selectInput("protein", "Select Protein:", choices = AS.genes_ADT)
+),
+mainPanel(
+plotOutput("violinPlot", height = "1200px", width = "1200px")
+)
+)
+)
+# Define server logic for the Shiny app
+server <- function(input, output) {
+output$violinPlot <- renderPlot({
+vln_ADT <- VlnPlot(obj_T,
+features = input$protein,
+split.by = "VISIT",
+slot = "counts",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_ADT <- lapply(vln_ADT, add_margins_and_subtitle, subtitle = "All ADT")
+vln_ADT_M72 <- VlnPlot(obj_M72_T,
+features = input$protein,
+split.by = "VISIT",
+slot = "counts",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_ADT_M72 <- lapply(vln_ADT_M72, add_margins_and_subtitle, subtitle = "M72 ADT")
+vln_ADT_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+features = input$protein,
+split.by = "VISIT",
+slot = "counts",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_ADT_UNSTIM <- lapply(vln_ADT_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM ADT")
+# Combine the plots into a single column
+combined_plot <- wrap_plots(
+plotlist = c(vln_ADT, vln_ADT_M72, vln_ADT_UNSTIM), ncol = 1
+)
+combined_plot
+}, height = 1200, width = 1200) # Set the height and width of the plot
+}
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+# Set default assay
+DefaultAssay(obj) <- "RNA"
+DefaultAssay(obj_M72) <- "RNA"
+DefaultAssay(obj_UNSTIM) <- "RNA"
+DefaultAssay(obj_Myeloid) <- "RNA"
+DefaultAssay(obj_M72_Myeloid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Myeloid) <- "RNA"
+DefaultAssay(obj_Lymphoid) <- "RNA"
+DefaultAssay(obj_M72_Lymphoid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Lymphoid) <- "RNA"
+DefaultAssay(obj_T) <- "RNA"
+DefaultAssay(obj_M72_T) <- "RNA"
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+# Define UI for the Shiny app
+ui <- fluidPage(
+titlePanel("Interactive Violin Plot - Relative Expression of Interferon Stimulated Genes"),
+sidebarLayout(
+sidebarPanel(
+selectInput("cell_type", "Select Cell Type:",
+choices = c("T cells", "Myeloid", "Lymphoid", "All Cells")),
+selectInput("gene", "Select Gene:", choices = IS.genes_RNA)
+),
+mainPanel(
+plotOutput("violinPlot", height = "1200px", width = "1200px")
+)
+)
+)
+IS.genes_RNA <- c("STAT1", "GBP1", "GBP2", "GBP5", "SERPING1", "IFNG", "ANKRD22", "IRF1", "IRF7", "IRF8", "NOD2", "TNF", "BATF2", "FCGR1A", "OAS1", "MX1", "IFIT1", "IFIT2", "IFIT3", "IFIT5", "ISG15", "CCL3", "CCL4", "RSAD2", "OASL", "CXCL10", "IFI44", "ISG20")
+# Set default assay
+DefaultAssay(obj) <- "RNA"
+DefaultAssay(obj_M72) <- "RNA"
+DefaultAssay(obj_UNSTIM) <- "RNA"
+DefaultAssay(obj_Myeloid) <- "RNA"
+DefaultAssay(obj_M72_Myeloid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Myeloid) <- "RNA"
+DefaultAssay(obj_Lymphoid) <- "RNA"
+DefaultAssay(obj_M72_Lymphoid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Lymphoid) <- "RNA"
+DefaultAssay(obj_T) <- "RNA"
+DefaultAssay(obj_M72_T) <- "RNA"
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+# Define UI for the Shiny app
+ui <- fluidPage(
+titlePanel("Interactive Violin Plot - Relative Expression of Interferon Stimulated Genes"),
+sidebarLayout(
+sidebarPanel(
+selectInput("gene", "Select Gene:", choices = IS.genes_RNA)
+),
+mainPanel(
+plotOutput("violinPlot", height = "1200px", width = "1200px")
+)
+)
+)
+# Define server logic for the Shiny app
+server <- function(input, output) {
+output$violinPlot <- renderPlot({
+vln_RNA <- VlnPlot(obj_T,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+vln_RNA_M72 <- VlnPlot(obj_M72_T,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+# Combine the plots into a single column
+combined_plot <- wrap_plots(
+plotlist = c(vln_RNA, vln_RNA_M72, vln_RNA_UNSTIM), ncol = 1
+)
+combined_plot
+}, height = 1200, width = 1200) # Set the height and width of the plot
+}
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+# Set default assay
+DefaultAssay(obj) <- "RNA"
+DefaultAssay(obj_M72) <- "RNA"
+DefaultAssay(obj_UNSTIM) <- "RNA"
+DefaultAssay(obj_Myeloid) <- "RNA"
+DefaultAssay(obj_M72_Myeloid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Myeloid) <- "RNA"
+DefaultAssay(obj_Lymphoid) <- "RNA"
+DefaultAssay(obj_M72_Lymphoid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Lymphoid) <- "RNA"
+DefaultAssay(obj_T) <- "RNA"
+DefaultAssay(obj_M72_T) <- "RNA"
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+# Define UI for the Shiny app
+ui <- fluidPage(
+titlePanel("Interactive Violin Plot - Relative Expression of Interferon Stimulated Genes"),
+sidebarLayout(
+sidebarPanel(
+selectInput("cell_type", "Select Cell Type:",
+choices = c("T cells", "Myeloid", "Lymphoid", "All Cells")),
+selectInput("gene", "Select Gene:", choices = IS.genes_RNA)
+),
+mainPanel(
+plotOutput("violinPlot", height = "1200px", width = "1200px")
+)
+)
+)
+# Define server logic for the Shiny app
+server <- function(input, output) {
+output$violinPlot <- renderPlot({
+# Select Seurat objects based on selected cell type
+if (input$cell_type == "T cells") {
+obj1 <- obj_T
+obj2 <- obj_M72_T
+obj3 <- obj_UNSTIM_T
+} else if (input$cell_type == "Myeloid") {
+obj1 <- obj_Myeloid
+obj2 <- obj_M72_Myeloid
+obj3 <- obj_UNSTIM_Myeloid
+} else if (input$cell_type == "Lymphoid") {
+obj1 <- obj_Lymphoid
+obj2 <- obj_M72_Lymphoid
+obj3 <- obj_UNSTIM_Lymphoid
+} else if (input$cell_type == "All Cells") {
+obj1 <- obj
+obj2 <- obj_M72
+obj3 <- obj_UNSTIM
+}
+# Generate violin plots for each condition and combine them
+vln_RNA <- VlnPlot(obj1,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+vln_RNA_M72 <- VlnPlot(obj2,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+vln_RNA_UNSTIM <- VlnPlot(obj3,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+# Combine the plots into a single column
+combined_plot <- wrap_plots(
+plotlist = c(vln_RNA, vln_RNA_M72, vln_RNA_UNSTIM), ncol = 1
+)
+combined_plot
+}, height = 1200, width = 1200)  # Set the height and width of the plot
+}
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+# Set default assay
+DefaultAssay(obj) <- "RNA"
+DefaultAssay(obj_Myeloid) <- "RNA"
+DefaultAssay(obj_Lymphoid) <- "RNA"
+DefaultAssay(obj_T) <- "RNA"
+# Define UI for the Shiny app
+ui <- fluidPage(
+titlePanel("Interactive Feature Plot - Interferon Stimulated Genes"),
+sidebarLayout(
+sidebarPanel(
+selectInput("cell_type", "Select Cell Type:",
+choices = c("T cells", "Myeloid", "Lymphoid", "All Cells")),
+selectInput("gene", "Select Gene:", choices = IS.genes_RNA)
+),
+mainPanel(
+plotOutput("violinPlot", height = "1200px", width = "1200px")
+)
+)
+)
+# Define server logic for the Shiny app
+server <- function(input, output) {
+output$violinPlot <- renderPlot({
+# Select Seurat objects based on selected cell type
+if (input$cell_type == "T cells") {
+obj1 <- obj_T
+} else if (input$cell_type == "Myeloid") {
+obj1 <- obj_Myeloid
+} else if (input$cell_type == "Lymphoid") {
+obj1 <- obj_Lymphoid
+} else if (input$cell_type == "All Cells") {
+obj1 <- obj
+}
+# Generate violin plots for each condition and combine them
+plots <- FeaturePlot(obj1,
+features = input$gene,
+label = TRUE,
+split.by = "VISIT_STIM",
+pt.size = 0,
+combine = FALSE)
+wrap_plots(plots, ncol = 2)
+}, height = 800, width = 1000) # Set the height and width of the plot
+}
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+#| context: server
+# Set default assay
+DefaultAssay(obj) <- "RNA"
+DefaultAssay(obj_M72) <- "RNA"
+DefaultAssay(obj_UNSTIM) <- "RNA"
+DefaultAssay(obj_Myeloid) <- "RNA"
+DefaultAssay(obj_M72_Myeloid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Myeloid) <- "RNA"
+DefaultAssay(obj_Lymphoid) <- "RNA"
+DefaultAssay(obj_M72_Lymphoid) <- "RNA"
+DefaultAssay(obj_UNSTIM_Lymphoid) <- "RNA"
+DefaultAssay(obj_T) <- "RNA"
+DefaultAssay(obj_M72_T) <- "RNA"
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+# Define UI for the Shiny app
+ui <- fluidPage(
+titlePanel("Interactive Violin Plot - Relative Expression of Interferon Stimulated Genes"),
+sidebarLayout(
+sidebarPanel(
+selectInput("cell_type", "Select Cell Type:",
+choices = c("T cells", "Myeloid", "Lymphoid", "All Cells")),
+selectInput("gene", "Select Gene:", choices = IS.genes_RNA)
+),
+mainPanel(
+plotOutput("violinPlot", height = "1200px", width = "1200px")
+)
+)
+)
+# Define server logic for the Shiny app
+server <- function(input, output) {
+output$violinPlot <- renderPlot({
+# Select Seurat objects based on selected cell type
+if (input$cell_type == "T cells") {
+obj1 <- obj_T
+obj2 <- obj_M72_T
+obj3 <- obj_UNSTIM_T
+} else if (input$cell_type == "Myeloid") {
+obj1 <- obj_Myeloid
+obj2 <- obj_M72_Myeloid
+obj3 <- obj_UNSTIM_Myeloid
+} else if (input$cell_type == "Lymphoid") {
+obj1 <- obj_Lymphoid
+obj2 <- obj_M72_Lymphoid
+obj3 <- obj_UNSTIM_Lymphoid
+} else if (input$cell_type == "All Cells") {
+obj1 <- obj
+obj2 <- obj_M72
+obj3 <- obj_UNSTIM
+}
+# Generate violin plots for each condition and combine them
+vln_RNA <- VlnPlot(obj1,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+vln_RNA_M72 <- VlnPlot(obj2,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+vln_RNA_UNSTIM <- VlnPlot(obj3,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+# Combine the plots into a single column
+combined_plot <- wrap_plots(
+plotlist = c(vln_RNA, vln_RNA_M72, vln_RNA_UNSTIM), ncol = 1
+)
+combined_plot
+}, height = 1200, width = 1200)  # Set the height and width of the plot
+}
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+quarto --version
+#| context: server
+# Define UI for the Shiny app
+shinyApp(
+ui = fluidPage(
+titlePanel("Interactive Violin Plot - Relative Expression of Antigen Specific Genes on T cells"),
+sidebarLayout(
+sidebarPanel(
+selectInput("gene", "Select Gene:", choices = AS.genes_RNA)
+),
+mainPanel(
+plotOutput("violinPlot", height = "1200px", width = "1200px")
+)
+)
+),
+# Define server logic for the Shiny app
+server = function(input, output) {
+output$violinPlot <- renderPlot({
+AS.genes_RNA <- c("CD3G", "CD4", "CD8A", "CD69", "CD40LG", "TNFRSF9", "IL2RA", "TNFRSF4", "HLA-DRA")
+# Set default assay
+DefaultAssay(obj_T) <- "RNA"
+DefaultAssay(obj_M72_T) <- "RNA"
+DefaultAssay(obj_UNSTIM_T) <- "RNA"
+vln_RNA <- VlnPlot(obj_T,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA <- lapply(vln_RNA, add_margins_and_subtitle, subtitle = "All RNA")
+vln_RNA_M72 <- VlnPlot(obj_M72_T,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA_M72 <- lapply(vln_RNA_M72, add_margins_and_subtitle, subtitle = "M72 RNA")
+vln_RNA_UNSTIM <- VlnPlot(obj_UNSTIM_T,
+features = input$gene,
+split.by = "VISIT",
+group.by = "sctype_classification",
+log = TRUE,
+pt.size = 0,
+combine = FALSE)
+vln_RNA_UNSTIM <- lapply(vln_RNA_UNSTIM, add_margins_and_subtitle, subtitle = "UNSTIM RNA")
+# Combine the plots into a single column
+combined_plot <- wrap_plots(
+plotlist = c(vln_RNA, vln_RNA_M72, vln_RNA_UNSTIM), ncol = 1
+)
+combined_plot
+}, height = 1200, width = 1200) # Set the height and width of the plot
+}
+)
+library(shiny)

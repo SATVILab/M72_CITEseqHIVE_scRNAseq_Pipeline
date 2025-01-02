@@ -1,0 +1,220 @@
+---
+title: "Data transfer"
+format: html
+editor: visual
+---
+
+## Description
+
+This document will detail the method used for transfer of raw sequencing data between the Shalek Lab and SATVI. Here we detail all of the steps required to gain access to the data.
+
+## Set up initial required inputs
+
+The following are needed to access raw data:
+
+1.  A [Terra Firecloud](https://firecloud.terra.bio/) account
+2.  A [Google Cloud Platform](https://cloud.google.com/free/?utm_source=google&utm_medium=cpc&utm_campaign=emea-none-all-none-dr-sitelink-all-all-trial-b-gcp-1011340&utm_content=text-ad-none-any-DEV_c-CRE_691999689967-ADGP_Hybrid+%7C+BKWS+-+MIX+%7C+Txt+-+General+-+GCP-KWID_43700079633104637-aud-606988878854:kwd-710266868622-userloc_1028745&utm_term=KW_create%20free%20google%20cloud%20account-ST_create+free+google+cloud+account-NET_g-&gad_source=1&gclid=Cj0KCQjw0_WyBhDMARIsAL1Vz8ut3W-fL2trw_6dujF7_Rdmm-gIYCAf0CGQFGFK3SRpckrmamlbPH0aAi9TEALw_wcB&gclsrc=aw.ds) account
+3.  Access to the SATVI Research Server for data backup
+4.  Python installed on your computer / HPC
+5.  gcloud CLI installed and initialized on your computer / HPC
+6.  Access to UCT HPC
+7.  Run folder containing raw data from Shalek Lab
+    -   This should contain a complete sample sheet .csv file
+
+### Set up a Terra Firecloud account
+
+Visit [terra.bio](https://firecloud.terra.bio/) and make an account. You will be able to set up an account using either Google or Microsoft login details. Since we interface with Google Cloud Platform, which relies on gmail, we recommend setting up your account using your gmail.
+
+This account is free, however, you will be billed for computational work.
+
+### Set up a Google Cloud Platform (GCP) account
+
+Visit [cloud.google.com](https://cloud.google.com/free/?utm_source=google&utm_medium=cpc&utm_campaign=emea-none-all-none-dr-sitelink-all-all-trial-b-gcp-1011340&utm_content=text-ad-none-any-DEV_c-CRE_691999689967-ADGP_Hybrid+%7C+BKWS+-+MIX+%7C+Txt+-+General+-+GCP-KWID_43700079633104637-aud-606988878854:kwd-710266868622-userloc_1028745&utm_term=KW_create%20free%20google%20cloud%20account-ST_create+free+google+cloud+account-NET_g-&gad_source=1&gclid=Cj0KCQjw0_WyBhDMARIsAL1Vz8ut3W-fL2trw_6dujF7_Rdmm-gIYCAf0CGQFGFK3SRpckrmamlbPH0aAi9TEALw_wcB&gclsrc=aw.ds) and sign up for a Google Cloud Platform account. The email used should be the same used for your Terra Firecloud account (gmail).
+
+This account is free, however, you will be billed for storage using Google Buckets. See the section below on creating a billing project for details.
+
+### Install and initialize gcloud CLI
+
+Visit <https://cloud.google.com/sdk/docs/install> and follow the instructions for your system to install and initialize gcloud CLI.
+
+Installation will require that you have a supported version of Python (Python 3.8 - 3.12) installed already. Importantly, if you have multiple versions of Python installed, you must add a supported version to your path. Python 3.11 seems to work best.
+
+### Set up access to UCT HPC
+
+## Set up billing
+
+*Note - This only needs to be done once when you initialize a project.*
+
+Detailed instructions for setting up GCP billing accounts, GCP billing projects, and Terra billing projects can be found [here](https://support.terra.bio/hc/en-us/articles/360026182251-How-to-set-up-billing-in-Terra-GCP)
+
+### Set up a GCP billing account
+
+1.  We have a SATVI billing account used for GCP storage and Terra-based analyses. The current SATVI_Terra GCP billing account manager should grant you access using the gmail associated with your GCP and Terra Firecloud accounts.
+
+2.  This billing account is already linked to Terra Firecloud.
+
+### Create a Terra Billing Project
+
+1.  Login to [Terra Firecloud](https://firecloud.terra.bio/).
+
+2.  In the left-hand menu, click the dropdown button by your name.
+
+3.  Select "Billing."
+
+4.  Click the "Create" button and select "GCP Billing Project."
+
+5.  Sign in with Google.
+
+6.  Enter a name for your Terra billing project.
+
+    -   This name should follow the following naming convention: "SATVI\_\[StudyName\]"
+
+    -   The project name should be specific to the overall study you are working on. For example, the billing project name for this study is "SATVI_M72ImmuneCorrelates"
+
+7.  Select "SATVI_Terra" from the dropdown menu.
+
+8.  Click "Create."
+
+You should now be set up to access data in Google Buckets and run analyses on Terra.
+
+## Transfer and back up data
+
+### Set up a data transfer directory (Google Bucket)
+
+The Shalek Lab will grant the user access to the Google Bucket transfer directory using the Google (gmail) or Microsoft (outlook) email you used to set up your GCP account.
+
+The Shalek Lab will provide the user with the name of the Google Bucket that contains the raw sequencing data and sample sheet. This bucket can be accessed by typing the following into your browser:
+
+```{r, eval = FALSE}
+https://console.cloud.google.com/storage/[PATH_TO_SHALEK_TRANSFER_BUCKET]/
+```
+
+### Create a Terra Workspace
+
+Create a workspace for each major assay that will require Terra-based analysis. Each workspace will link to a dedicated Google Bucket and will contain workspace, cloud, and cost information, data file paths or data required to run Terra-analyses, computational workflows, and job history. To create a new workspace:
+
+1.  Login to [Terra Firecloud](https://firecloud.terra.bio/).
+
+2.  Select "Workspaces" from the dropdown menu.
+
+3.  Click the blue "+" sign.
+
+4.  Enter a workspace name.
+
+    -   The workspace name should follow the following naming convention: "satvi\_\[studyname\]\_\[assayname\]"
+
+    -   For example, the workspace name for the M72 Immune Correlates of Protection CITEseq-HIVE scRNAseq Pipeline is "satvi_m72immunecorrelates_citeseqhive"
+
+5.  Select the billing project created for your study from the dropdown menu.
+
+    -   For example, for this study, select the "SATVI_M72ImmuneCorrelates" billing project.
+
+6.  Select "us-central1 (Iowa) (default)" from the Bucket location dropdown menu.
+
+7.  Enter a description for the workspace. This should include information on the larger purpose of the associated study and analysis pipeline.
+
+8.  If you have the need for controlled-access data, monitoring, and logging, check the box for "Enable additional security monitoring"
+
+    -   At this stage, we have left this option unclicked.
+
+9.  Set authorization domains if necessary.
+
+    -   At this stage, we do not have any authorization domains.
+
+    -   *Note - This cannot be changed after the workspace is created!*
+
+*Note - When you create a new workspace, a linked Google Bucket will automatically be created. All data needed for the workflows in the workspace should be stored in this Google Bucket.*
+
+Detailed instructions for working with and cloning Terra Workspaces can be found via the following resources:
+
+[Intro to Workspaces](https://support.terra.bio/hc/en-us/articles/360046095192-Intro-to-workspaces#:~:text=At%20the%20heart%20of%20working,downloading%20and%20storing%20it%20yourself.)
+
+[Working with Workspaces](https://support.terra.bio/hc/en-us/articles/360024743371-Working-with-workspaces)
+
+[Cloning Terra Workspaces](https://support.terra.bio/hc/en-us/articles/360026130851-How-to-clone-your-own-workspace)
+
+### Back up raw data on the SATVI Research Server and copy to the Google Bucket associated with your Terra Workspace
+
+1.  Open a new Terminal window.
+2.  Authenticate gcloud.
+
+```{zsh, eval = FALSE}
+# Add optimal python version to path
+export CLOUDSDK_PYTHON=python3.11
+```
+
+```{zsh, eval = FALSE}
+gcloud auth login
+
+# If you get the error "error zsh: command not found: gcloud", use the following:
+
+./google-cloud-sdk/bin/gcloud auth login
+```
+
+3.  Check the total number of files in the transfer Bucket.
+
+```{zsh, eval = FALSE}
+gsutil du gs://[PATH_TO_SHALEK_TRANSFER_BUCKET]/[RUN_FOLDER_NAME] | wc -l
+```
+
+4.  Copy the run folder to the SATVI Research Server.
+
+    -   Login to access the SATVI Research Server.
+
+    -   For each sequencing run, download the entire run folder directory from the transfer Bucket to the SATVI Research Server using gsutil.
+
+    -   Raw sequencing data for the M72 Immune Correlates of Protection Study are found at the following file path: /Volumes/satvi/Projects/M72 Immune Correlates/Single cell sequencing/M72ImmuneCorrelatesPilot_ExperimentalRuns/raw_sequencing
+
+    -   *Note - This can take quite a while.*
+
+```{zsh, eval = FALSE}
+gsutil -m cp -r gs://[PATH_TO_SHALEK_TRANSFER_BUCKET] [/Volumes/satvi/Projects/M72 Immune Correlates/Single cell sequencing/M72ImmuneCorrelatesPilot_ExperimentalRuns/raw_sequencing]
+```
+
+5.  Verify the download is complete by checking the contents of the run folder copied to the SATVI Research Server.
+
+```{zsh, eval = FALSE}
+# To get the file count only:
+
+mdls -name kMDItemFSNodeCount [/Volumes/satvi/Projects/M72 Immune Correlates/Single cell sequencing/M72ImmuneCorrelatesPilot_ExperimentalRuns/raw_sequencing]/[FOLDER_NAME] -raw|xargs
+
+# Or to get the full list of what is in the folder:
+
+ls [/Volumes/satvi/Projects/M72 Immune Correlates/Single cell sequencing/M72ImmuneCorrelatesPilot_ExperimentalRuns/raw_sequencing]/[FOLDER_NAME]
+```
+
+6.  Copy the run folder to the Google Bucket associated with your Terra Workspace.
+
+    -   *Note - This should go much faster*
+
+    -   Navigate to the Google Bucket associated with your Terra Workspace. Go to Terra -\> Workspaces -\> satvi_m72immunecorrelates_citeseqhive -\> Cloud Information --\> Open bucket in browser.
+
+    -   Create a sub-directory in the Google Bucket associated with your Terra Workspace for each sequencing experiment. This folder should be named with the naming convention "RUN00N." For example, the folder that will contain data from RUN001 of sample processing should be named "RUN001"
+
+    -   Copy the entire directory for the run folder to the experiment folder. From the Terminal:
+
+```{zsh, eval = FALSE}
+gsutil -m cp -r gs://[PATH_TO_SHALEK_TRANSFER_BUCKET] gs://[PATH_TO_EXPERIMENT_FOLDER]
+```
+
+### Troubleshooting
+
+Sometimes gsutil can stall when trying to transfer very large directories with many files. When this happens, the transfer in the terminal will likely stall at 99%. If this happens, confirm that that the contents of the transfer bucket and experiment buckets are not identical. If they are not identical, do the following:
+
+\*Note - BE EXTREMELY CAREFUL WITH WHICH DIRECTORIES / BUCKETS YOU ARE DELETING! NEVER DELETE ANYTHING FROM THE TRANSFER BUCKET. FOR rsync, THE ORDER IS CRITICAL. THE \[PATH_TO_SHALEK_TRANSFER_BUCKET\] IS THE ORIGINAL BUCKET AND MUST COME FIRST IN THE LINE OF CODE. THE \[PATH_TO_EXPERIMENT_FOLDER\] IS YOUR EXPERIMENT FOLDER AND MUST COME SECOND. IF YOU MIX UP THE ORDER, THE RAW DATA FROM THE SHALEK LAB WILL BE OVERWRITTEN WITH THE INCOMPLETE DATA FROM YOUR EXPERIMENT FOLDER.
+
+1.  First, try deleting the run folder from the experiment bucket. Then repeat the original transfer method by copying the entire run folder from the transfer bucket to the experiment folder.
+
+2.  If this fails again, sync the run folder from the experiment bucket to the run folder from the transfer bucket.
+
+```{zsh, eval = FALSE}
+gsutil rsync gs://[PATH_TO_SHALEK_TRANSFER_BUCKET_RUN_FOLDER] gs://[PATH_TO_EXPERIMENT_FOLDER_RUN_FOLDER]
+```
+
+3.  Confirm again that the contents of the transfer bucket run folder match the contents of the experiment folder run folder.
+
+
+
+
+
+
