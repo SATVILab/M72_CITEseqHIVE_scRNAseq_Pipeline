@@ -2242,7 +2242,7 @@ print(plot10)
 
 ### Summarize cluster data for the M72 Immune Correlates Consortium data upload
 
-```{r}
+```{r, eval = FALSE}
 # MAKE COLUMN sample for PID VISIT
 # Create the summary dataframes for consoritum data upload
 consortium_data <- obj@meta.data %>%
@@ -2576,6 +2576,8 @@ write.csv(consortium_data_visit_group, paste0(dir_save, "consortium_data_visit_g
 ### Overlay expression of ADTs on RNA clusters
 
 ```{r}
+Idents(object = obj) <- "RNA_snn_res.0.6"
+
 # Create a list of all cluster identities in obj
 cluster.ids <- levels(Idents(obj))
 
