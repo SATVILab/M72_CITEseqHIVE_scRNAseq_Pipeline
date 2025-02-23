@@ -39,12 +39,18 @@ library(ggplot2)
 library(cowplot)
 library(ComplexHeatmap)
 library(magick)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(AnnotationDbi)
+library(DOSE)
+library(ggplot2)
+library(enrichplot)
 ```
 
 ### Load the .Rdata file generated after RNA clustering only by CITEseqHIVE_Seurat_ClusterIDcells.qmd
 
 ```{r}
-load("output/Seurat_ClusterIDCellsRNAonly_obj.Rdata")
+load("output/dataset_full/Seurat_ClusterIDCellsRNAonly_obj.Rdata")
 obj
 
 ### Confirm Seruat object contains assays for RNA and ADT
@@ -64,11 +70,11 @@ obj_UNSTIM <- subset(obj, subset = STIM %in% c("UNSTIM"))
 
 # Progenitor cells and HSC/MPP cells left out
 
-obj_D0_Lymphoid <- subset(obj_D0, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
-obj_D37_Lymphoid <- subset(obj_D37, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
-obj_M72_Lymphoid <- subset(obj_M72, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
-obj_UNSTIM_Lymphoid <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
-obj_Lymphoid <- subset(obj, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_D0_Lymphoid <- subset(obj_D0, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells", "Th1", "Th2", "Th17", "Th1/Th17", "Th22", "Th1 cytotoxic")) #add in gd-T cells but need to know how to put symbols
+obj_D37_Lymphoid <- subset(obj_D37, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells", "Th1", "Th2", "Th17", "Th1/Th17", "Th22", "Th1 cytotoxic")) #add in gd-T cells but need to know how to put symbols
+obj_M72_Lymphoid <- subset(obj_M72, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells", "Th1", "Th2", "Th17", "Th1/Th17", "Th22", "Th1 cytotoxic")) #add in gd-T cells but need to know how to put symbols
+obj_UNSTIM_Lymphoid <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells", "Th1", "Th2", "Th17", "Th1/Th17", "Th22", "Th1 cytotoxic")) #add in gd-T cells but need to know how to put symbols
+obj_Lymphoid <- subset(obj, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells", "Th1", "Th2", "Th17", "Th1/Th17", "Th22", "Th1 cytotoxic")) #add in gd-T cells but need to know how to put symbols
 
 obj_D0_Myeloid <- subset(obj_D0, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
 obj_D37_Myeloid <- subset(obj_D37, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
@@ -76,23 +82,26 @@ obj_M72_Myeloid <- subset(obj_M72, subset = sctype_classification %in% c("Eosino
 obj_UNSTIM_Myeloid <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
 obj_Myeloid <- subset(obj, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
 
-obj_D0_T <- subset(obj_D0, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
-obj_D37_T <- subset(obj_D37, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
-obj_M72_T <- subset(obj_M72, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
-obj_UNSTIM_T <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
-obj_T <- subset(obj, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+obj_D0_T <- subset(obj_D0, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells", "Th1", "Th2", "Th17", "Th1/Th17", "Th22", "Th1 cytotoxic")) #add in gd-T cells but need to know how to put symbols
+obj_D37_T <- subset(obj_D37, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells", "Th1", "Th2", "Th17", "Th1/Th17", "Th22", "Th1 cytotoxic")) #add in gd-T cells but need to know how to put symbols
+obj_M72_T <- subset(obj_M72, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells", "Th1", "Th2", "Th17", "Th1/Th17", "Th22", "Th1 cytotoxic")) #add in gd-T cells but need to know how to put symbols
+obj_UNSTIM_T <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells", "Th1", "Th2", "Th17", "Th1/Th17", "Th22", "Th1 cytotoxic")) #add in gd-T cells but need to know how to put symbols
+obj_T <- subset(obj, subset = sctype_classification %in% c("Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells", "Th1", "Th2", "Th17", "Th1/Th17", "Th22", "Th1 cytotoxic")) #add in gd-T cells but need to know how to put symbols
 
+obj_interest <- subset(obj_M72, subset = sctype_classification %in% c("Naive CD4+ T cells")) # "Classical Monocytes", "Th1", "Effector CD4+ T cells"  
+obj_interest <- obj_M72_Lymphoid
+  
 ```
 
 ### DEG
 
 ```{r}
-# Set these as identities in the Seurat obj_M72_Lymphoid
-obj_M72_Lymphoid <- SetIdent(obj_M72_Lymphoid, value = obj_M72_Lymphoid$VISIT)
+# Set these as identities in the Seurat obj_interest
+obj_interest <- SetIdent(obj_interest, value = obj_interest$VISIT)
 
 # Perform differential expression
 de_results <- FindMarkers(
-  obj_M72_Lymphoid, 
+  obj_interest, 
   ident.1 = "D37", 
   ident.2 = "D0", 
   #min.pct = 0.1,   # Min pct of cells where the gene must be detected (adjust as needed)
@@ -105,7 +114,7 @@ de_results <- FindMarkers(
 de_results$padj <- p.adjust(de_results$p_val, method = "BH")
 
 # Filter results based on adjusted p-value
-significant_genes <- subset(de_results, padj < 0.1)
+significant_genes <- subset(de_results, padj < 0.05)
 
 # Add gene names from row names to a new column called 'gene'
 significant_genes$gene <- rownames(significant_genes)
@@ -137,14 +146,14 @@ volcano_plot <- volcano_plot +
   geom_point(data=top_genes, aes(x=avg_log2FC, y=-log10(p_val)), color="red", size=3) +
   geom_text(data=top_genes, aes(x=avg_log2FC, y=-log10(p_val), label=gene), vjust=1.5, color="black", size=3)
 
-ggsave(filename = paste0(dir_save, "totalMyeloid_volcanoDEG_plot.png"), plot = volcano_plot, width = 8, height = 5)
+ggsave(filename = paste0(dir_save, "ClusterProfiler_volcanoDEG_EffectorCD4T.png"), plot = volcano_plot, width = 8, height = 5)
 
 
 # Create heatmaps
 # Extract the expression data for significant genes
-all_genes <- rownames(obj_M72_Lymphoid)
+all_genes <- rownames(obj_interest)
 sig_genes <- intersect(all_genes, rownames(significant_genes))
-data_matrix <- GetAssayData(obj_M72_Lymphoid, layer = "data")[sig_genes, ]
+data_matrix <- GetAssayData(obj_interest, layer = "data")[sig_genes, ]
 
 if (!is.matrix(data_matrix)) {
     data_matrix <- as.matrix(data_matrix)
@@ -172,7 +181,7 @@ if("gene" %in% colnames(top_20_genes)) {
 }
 
 # Extract the expression data for these top 50 genes
-data_matrix <- GetAssayData(obj_M72_Lymphoid, slot = "data")[top_20_gene_names, ]
+data_matrix <- GetAssayData(obj_interest, slot = "data")[top_20_gene_names, ]
 
 # Convert to matrix if not already
 if (!is.matrix(data_matrix)) {
@@ -198,7 +207,7 @@ top_genes <- significant_genes %>%
   slice(1:20)
 
 # Create a dot plot
-plot <- ggplot(top_genes, 
+dotstats_plot <- ggplot(top_genes, 
                aes(x = gene, y = avg_log2FC, size = -log10(p_val), color = avg_log2FC)) +
   geom_point(alpha=0.6) +
   scale_size(range = c(3, 8)) +
@@ -208,14 +217,14 @@ plot <- ggplot(top_genes,
        x = "Gene", y = "Average Log Fold Change") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
-ggsave(filename = paste0(dir_save, "totalMyeloid_dotDEGstats_plot.png"), plot = plot, width = 8, height = 5)
+ggsave(filename = paste0(dir_save, "ClusterProfiler_dotDEGstats_EffectorCD4T.png"), plot = dotstats_plot, width = 8, height = 5)
 
 
 # Create a DotPlot in Seurat
 # Extract the 'gene' column as a vector
 top_20DEG <- top_genes$gene
 
-plot <- DotPlot(obj_M72_Lymphoid, features = top_20DEG, cols = c("blue", "red")) +
+dotDEG_plot <- DotPlot(obj_interest, features = top_20DEG, cols = c("blue", "red")) +
   theme_bw() +
   ggtitle("Top 20 Differentially Expressed Genes") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
@@ -223,21 +232,44 @@ plot <- DotPlot(obj_M72_Lymphoid, features = top_20DEG, cols = c("blue", "red"))
         axis.title.x = element_blank(),
         axis.title.y = element_blank())
 
-ggsave(filename = paste0(dir_save, "totalMyeloid_dotDEG_plot.png"), plot = plot, width = 6, height = 4)
+ggsave(filename = paste0(dir_save, "ClusterProfiler_dotDEG_EffectorCD4T.png"), plot = dotDEG_plot, width = 6, height = 4)
 
 # Violin plot for a few selected genes
-plot <- VlnPlot(obj_M72_Lymphoid, features = c(sig_genes[1:10]), group.by = "VISIT",
-        pt.size = 0)
+vln_plot <- VlnPlot(obj_interest, features = c(top_20DEG), group.by = "VISIT",
+        pt.size = 1)
+
+ggsave(filename = paste0(dir_save, "ClusterProfiler_vlnDEG_EffectorCD4T.png"), plot = vln_plot, width = 6, height = 8)
 
 ```
 
-### 
+### Plot DEGs
+
+```{r, echo = FALSE}
+#| fig-height: 7
+print(volcano_plot)
+```
+
+```{r, echo = FALSE}
+#| fig-height: 7
+print(dotstats_plot)
+```
+
+```{r, echo = FALSE}
+#| fig-height: 7
+print(dotDEG_plot)
+```
+
+```{r, echo = FALSE}
+#| fig-height: 21
+print(vln_plot)
+```
 
 ### clusterProfiler
 
-```{r}
+```{r, message = FALSE, warning = FALSE, output = FALSE}
 library(clusterProfiler)
 library(org.Hs.eg.db)
+library(AnnotationDbi)
 library(DOSE)
 library(ggplot2)
 library(enrichplot)
@@ -248,13 +280,15 @@ names(gene_list) <- rownames(de_results)
 gene_list <- sort(gene_list, decreasing = TRUE)
 
 # Convert gene symbols to Entrez IDs for clusterProfiler
+#top_genes_list <- top_genes$gene
+#top_genes_list_entrez <- bitr(top_genes_list, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db, drop = TRUE)
 sig_genes <- significant_genes$gene
-sig_genes_entrez <- bitr(sig_genes, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
-gene_list_entrez <- bitr(names(gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+sig_genes_entrez <- bitr(sig_genes, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db, drop = TRUE)
+gene_list_entrez <- bitr(names(gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db, drop = TRUE)
 gene_list <- setNames(gene_list, gene_list_entrez$ENTREZID)
 
 # Remove any NA values from gene_list
-gene_list <- na.omit(gene_list)
+gene_list <- gene_list[!is.na(names(gene_list))]
 
 # Verify gene_list content
 head(gene_list)
@@ -270,13 +304,13 @@ ego <- enrichGO(gene = sig_genes_entrez$ENTREZID,
 
 
 # Plot ORA results
-dotplot(ego, showCategory = 20) + ggtitle("Over-representation Analysis")
-barplot(ego, showCategory=20) 
+ora_dot_plot <- dotplot(ego, showCategory = 20) + ggtitle("Over-representation Analysis")
+ora_bar_plot <- barplot(ego, showCategory=20) 
 
 # Enrichment map
 # Compute the term similarity matrix
 ego <- pairwise_termsim(ego)
-emapplot(ego) + ggtitle("Enrichment Map of GO Terms")
+ora_emap_plot <- emapplot(ego) + ggtitle("Enrichment Map of GO Terms")
 
 # Gene-concept network
 ## convert gene ID to Symbol
@@ -287,24 +321,24 @@ p2 <- cnetplot(egox, categorySize="pvalue", color.params = list(foldChange = gen
     scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
 p3 <- cnetplot(egox, color.params = list(foldChange = gene_list), circular = TRUE, colorEdge = TRUE) + 
     scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
-plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
-ggsave(filename = paste0(dir_save, "ORA_cnetplots.png"), plot = plot, width = 25, height = 12)
+ora_gcn_plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
+ggsave(filename = paste0(dir_save, "ClusterProfiler_ORA_cnetplots.png"), plot = ora_gcn_plot, width = 25, height = 12)
 
 
 # Heatmap classification
 p1 <- heatplot(egox, showCategory=5)
 p2 <- heatplot(egox, foldChange=gene_list, showCategory=10) +
     scale_fill_gradient2(name='fold change', low='steelblue', high='firebrick')
-plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
-ggsave(filename = paste0(dir_save, "ORA_heatmaps.png"), plot = plot, width = 25, height = 10)
+ora_hm_plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+ggsave(filename = paste0(dir_save, "ClusterProfiler_ORA_heatmaps.png"), plot = ora_hm_plot, width = 25, height = 10)
 
 
 # Tree plot
 egox2 <- pairwise_termsim(egox)
 p1 <- treeplot(egox2)
 p2 <- treeplot(egox2, hclust_method = "average")
-plot <- aplot::plot_list(p1, p2, tag_levels='A')
-ggsave(filename = paste0(dir_save, "ORA_treeplots.png"), plot = plot, width = 25, height = 10)
+ora_tree_plot <- aplot::plot_list(p1, p2, tag_levels='A')
+ggsave(filename = paste0(dir_save, "ClusterProfiler_ORA_treeplots.png"), plot = ora_tree_plot, width = 25, height = 10)
 
 # Upset plots
 #upsetplot(ego)
@@ -315,7 +349,7 @@ gsea_res <- gseGO(geneList = gene_list,
                   OrgDb = org.Hs.eg.db,
                   ont = "BP",
                   pAdjustMethod = "BH",
-                  pvalueCutoff = 1, #CHANGE THIS!!!
+                  pvalueCutoff = 0.05,
                   verbose = FALSE,
                   by = "fgsea")
 
@@ -323,8 +357,8 @@ gsea_res <- gseGO(geneList = gene_list,
 saveRDS(gsea_res, file = paste0(dir_save, "gsea_results.rds"))
 
 # Plot GSEA results
-plot <- dotplot(gsea_res, showCategory=30) + ggtitle("dotplot for GSEA")
-ggsave(filename = paste0(dir_save, "GSEA_dotplot.png"), plot = plot, width = 8, height = 12)
+gsea_dot_plot <- dotplot(gsea_res, showCategory=30) + ggtitle("dotplot for GSEA")
+ggsave(filename = paste0(dir_save, "ClusterProfiler_GSEA_dotplot.png"), plot = gsea_dot_plot, width = 8, height = 12)
 
 # Gene-concept network
 ## convert gene ID to Symbol
@@ -335,19 +369,19 @@ p2 <- cnetplot(egox, categorySize="pvalue", color.params = list(foldChange = gen
     scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
 p3 <- cnetplot(egox, color.params = list(foldChange = gene_list), circular = TRUE, colorEdge = TRUE) + 
     scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
-plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
-ggsave(filename = paste0(dir_save, "GSEA_cnetplots.png"), plot = plot, width = 25, height = 12)
+gsea_gcn_plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
+ggsave(filename = paste0(dir_save, "ClusterProfiler_GSEA_cnetplots.png"), plot = gsea_gcn_plot, width = 25, height = 12)
 
 # Heatmap classification
 p1 <- heatplot(egox, showCategory=5)
 p2 <- heatplot(egox, foldChange=gene_list, showCategory=5) +
     scale_fill_gradient2(name='fold change', low='steelblue', high='firebrick')
-plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
-ggsave(filename = paste0(dir_save, "GSEA_heatmaps.png"), plot = plot, width = 25, height = 10)
+gsea_hm_plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+ggsave(filename = paste0(dir_save, "ClusterProfiler_GSEA_heatmaps.png"), plot = gsea_hm_plot, width = 25, height = 10)
 
 # Ridgeplot
-plot <- ridgeplot(gsea_res)
-ggsave(filename = paste0(dir_save, "GSEA_ridgeplot.png"), plot = plot, width = 10, height = 15)
+gsea_ridge_plot <- ridgeplot(gsea_res)
+ggsave(filename = paste0(dir_save, "ClusterProfiler_GSEA_ridgeplot.png"), plot = gsea_ridge_plot, width = 10, height = 15)
 
 # Running score and preranked list
 p1 <- gseaplot(gsea_res, geneSetID = 1, by = "runningScore", title = gsea_res$Description[1])
@@ -357,18 +391,78 @@ cowplot::plot_grid(p1, p2, p3, ncol=1, labels=LETTERS[1:3])
 
 gseaplot2(gsea_res, geneSetID = 1, title = gsea_res$Description[1])
 gseaplot2(gsea_res, geneSetID = 1:3)
-plot <- gseaplot2(gsea_res, geneSetID = 1:3, pvalue_table = TRUE,
+gsea_rs_plot <- gseaplot2(gsea_res, geneSetID = 1:3, pvalue_table = TRUE,
           color = c("#E495A5", "#86B875", "#7DB0DD"), ES_geom = "dot")
-ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15, height = 15)
+ggsave(filename = paste0(dir_save, "ClusterProfiler_GSEA_gseaplot.png"), plot = gsea_rs_plot, width = 15, height = 15)
 
 
+```
+
+### Plot ORA results
+
+```{r, echo = FALSE}
+#| fig-height: 10
+print(ora_dot_plot)
+```
+
+```{r, echo = FALSE}
+#| fig-height: 10
+print(ora_bar_plot)
+```
+
+```{r, echo = FALSE}
+#| fig-height: 10
+print(ora_emap_plot)
+```
+
+```{r, echo = FALSE, warning = FALSE}
+#| fig-height: 10
+print(ora_gcn_plot)
+```
+
+```{r, echo = FALSE}
+#| fig-height: 7
+print(ora_hm_plot)
+```
+
+```{r, echo = FALSE}
+#| fig-height: 5
+print(ora_tree_plot)
+```
+
+### Plot GSEA results
+
+```{r, echo = FALSE}
+#| fig-height: 10
+print(gsea_dot_plot)
+```
+
+```{r, echo = FALSE, warning = FALSE}
+#| fig-height: 10
+print(gsea_gcn_plot)
+```
+
+```{r, echo = FALSE}
+#| fig-height: 7
+print(gsea_hm_plot)
+```
+
+```{r, echo = FALSE}
+#| fig-height: 10
+print(gsea_ridge_plot)
+```
+
+```{r, echo = FALSE}
+#| fig-height: 10
+print(gsea_rs_plot)
 ```
 
 ## DEG and clusterProfiler for all cell types and STIMs
 
 ```{r}
 # Identify unique features in obj@meta.data$sctype_classification and obj@meta.data$STIM
-  sctype_classifications <- setdiff(unique(obj$sctype_classification), "Plasma B cells")
+  sctype_classifications <- setdiff(unique(obj$sctype_classification), c("Basophils", "Plasma B cells"))
+  #sctype_classifications <- c("Effector CD4+ T cells")
   stim_conditions <- setdiff(unique(obj$STIM), "UNSTIM")
   
   # Directory to save plots
@@ -401,7 +495,7 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
       de_results$padj <- p.adjust(de_results$p_val, method = "BH")
       
       # Filter results based on adjusted p-value
-      significant_genes <- subset(de_results, padj < 0.1)
+      significant_genes <- subset(de_results, padj < 0.05)
       
       # Add gene names from row names to a new column called 'gene'
       significant_genes$gene <- rownames(significant_genes)
@@ -427,7 +521,7 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
         geom_point(data=top_genes, aes(x=avg_log2FC, y=-log10(p_val)), color="red", size=3) +
         geom_text(data=top_genes, aes(x=avg_log2FC, y=-log10(p_val), label=gene), vjust=1.5, color="black", size=3)
       
-      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_volcanoDEG_plot.png"), plot = volcano_plot, width = 8, height = 5)
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_volcanoDEG.png"), plot = volcano_plot, width = 8, height = 10)
       
       # Create heatmaps
       # Extract the expression data for significant genes
@@ -492,7 +586,7 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
              x = "Gene", y = "Average Log Fold Change") +
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
       
-      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_dotDEGstats_plot.png"), plot = plot, width = 8, height = 5)
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_dotDEGstats.png"), plot = plot, width = 8, height = 5)
       
       # Create a DotPlot in Seurat
       # Extract the 'gene' column as a vector
@@ -507,17 +601,32 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
                 axis.text.y = element_text(angle = 90, vjust = 0.5, hjust = 0.5),
                 axis.title.x = element_blank(),
                 axis.title.y = element_blank())
-        
-        ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_dotDEG_plot.png"), plot = plot, width = 6, height = 4)
+    
+        # Extract the legends
+        legend_color <- cowplot::get_legend(plot + guides(size = "none"))
+        legend_size <- cowplot::get_legend(plot + guides(color = "none"))
+    
+        # Combine the legends with some vertical space
+        legends <- cowplot::plot_grid(legend_color, legend_size, ncol = 1, rel_heights = c(1, 1), align = "v")
+    
+        # Combine the plot and legends
+        combined_plot <- cowplot::plot_grid(
+          plot + theme(legend.position = "none"),
+          cowplot::plot_grid(NULL, legends, ncol = 1, rel_heights = c(0.03, 1)),
+          ncol = 2,
+          rel_widths = c(3, 0.75)
+        )
+    
+        ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_dotDEG.png"), plot = combined_plot, width = 9, height = 3)
       } else {
-        print(paste("No top DEGs found for DotPlot for", cell_type, "under", stim, "condition"))
-      }
+          print(paste("No top DEGs found for DotPlot for", cell_type, "under", stim, "condition"))
+      }       
       
       # Violin plot for a few selected genes
-      plot <- VlnPlot(obj_subset, features = c(sig_genes[1:num_top_genes]), group.by = "VISIT",
+      plot <- VlnPlot(obj_subset, features = c(top_DEG), group.by = "VISIT",
                       pt.size = 0)
       
-      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_violinDEG_plot.png"), plot = plot, width = 8, height = 5)
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_violinDEG.png"), plot = plot, width = 8, height = 30)
       
       # ClusterProfiler Analysis
       # Prepare gene list for GSEA (ranks based on logFC or other metric)
@@ -526,13 +635,15 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
       gene_list <- sort(gene_list, decreasing = TRUE)
       
       # Convert gene symbols to Entrez IDs for clusterProfiler
+      #top_genes_list <- top_genes$gene
+      #top_genes_list_entrez <- bitr(top_genes_list, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db, drop = TRUE)
       sig_genes <- significant_genes$gene
       sig_genes_entrez <- bitr(sig_genes, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
       gene_list_entrez <- bitr(names(gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
       gene_list <- setNames(gene_list, gene_list_entrez$ENTREZID)
       
       # Remove any NA values from gene_list
-      gene_list <- na.omit(gene_list)
+      gene_list <- gene_list[!is.na(names(gene_list))]
       
       # Verify gene_list content
       head(gene_list)
@@ -548,14 +659,15 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
       
       # Check if ego contains any enriched terms before plotting
       if (nrow(ego) > 0) {
+        
         # Plot ORA results
-        dotplot(ego, showCategory = 20) + ggtitle("Over-representation Analysis")
-        barplot(ego, showCategory=20) 
+        ora_dot_plot <- dotplot(ego, showCategory = 20) + ggtitle("Over-representation Analysis")
+        ora_bar_plot <- barplot(ego, showCategory=20) 
         
         # Enrichment map
         # Compute the term similarity matrix
         ego <- pairwise_termsim(ego)
-        emapplot(ego) + ggtitle("Enrichment Map of GO Terms")
+        ora_emap_plot <- emapplot(ego) + ggtitle("Enrichment Map of GO Terms")
         
         # Gene-concept network
         ## convert gene ID to Symbol
@@ -563,18 +675,18 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
         p1 <- cnetplot(egox, color.params = list(foldChange = gene_list))
         ## categorySize can be scaled by 'pvalue' or 'geneNum'
         p2 <- cnetplot(egox, categorySize="pvalue", color.params = list(foldChange = gene_list)) + 
-          scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
+          scale_color_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
         p3 <- cnetplot(egox, color.params = list(foldChange = gene_list), circular = TRUE, colorEdge = TRUE) + 
-          scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
-        plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
-        ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_ORA_cnetplots.png"), plot = plot, width = 25, height = 12)
+          scale_color_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
+        ora_gcn_plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
+        ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_ORA_cnetplots.png"), plot = ora_gcn_plot, width = 25, height = 12)
         
         # Heatmap classification
         p1 <- heatplot(egox, showCategory=5)
         p2 <- heatplot(egox, foldChange=gene_list, showCategory=10) +
-          scale_fill_gradient2(name='fold change', low='steelblue', high='firebrick')
-        plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
-        ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_ORA_heatmaps.png"), plot = plot, width = 25, height = 10)
+          scale_fill_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
+        ora_hm_plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+        ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_ORA_heatmaps.png"), plot = ora_hm_plot, width = 25, height = 10)
         
         # Tree plot
         #egox2 <- pairwise_termsim(egox)
@@ -600,11 +712,11 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
                         by = "fgsea")
       
       # Save GSEA result to an RDS file
-      saveRDS(gsea_res, file = paste0(dir_save, cell_type, "_", stim, "_gsea_results.rds"))
+      saveRDS(gsea_res, file = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_gsea_results.rds"))
       
       # Plot GSEA results
-      plot <- dotplot(gsea_res, showCategory=30) + ggtitle("dotplot for GSEA")
-      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_GSEA_dotplot.png"), plot = plot, width = 8, height = 12)
+      gsea_dot_plot <- dotplot(gsea_res, showCategory=30) + ggtitle("dotplot for GSEA")
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_GSEA_dotplot.png"), plot = gsea_dot_plot, width = 8, height = 12)
       
       # Gene-concept network
       ## convert gene ID to Symbol
@@ -612,22 +724,22 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
       p1 <- cnetplot(egox, color.params = list(foldChange = gene_list))
       ## categorySize can be scaled by 'pvalue' or 'geneNum'
       p2 <- cnetplot(egox, categorySize="pvalue", color.params = list(foldChange = gene_list)) + 
-        scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
+        scale_color_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
       p3 <- cnetplot(egox, color.params = list(foldChange = gene_list), circular = TRUE, colorEdge = TRUE) + 
-        scale_color_gradient2(name='fold change', low='steelblue', high='firebrick')
-      plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
-      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_GSEA_cnetplots.png"), plot = plot, width = 25, height = 12)
+        scale_color_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
+      gsea_gcn_plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_GSEA_cnetplots.png"), plot = gsea_gcn_plot, width = 25, height = 12)
       
       # Heatmap classification
       p1 <- heatplot(egox, showCategory=5)
       p2 <- heatplot(egox, foldChange=gene_list, showCategory=5) +
-        scale_fill_gradient2(name='fold change', low='steelblue', high='firebrick')
-      plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
-      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_GSEA_heatmaps.png"), plot = plot, width = 25, height = 10)
+        scale_fill_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
+      gsea_hm_plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_GSEA_heatmaps.png"), plot = gsea_hm_plot, width = 25, height = 10)
       
       # Ridgeplot
-      plot <- ridgeplot(gsea_res)
-      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_GSEA_ridgeplot.png"), plot = plot, width = 10, height = 15)
+      gsea_ridge_plot <- ridgeplot(gsea_res)
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_GSEA_ridgeplot.png"), plot = gsea_ridge_plot, width = 10, height = 20)
       
       # Running score and preranked list
       p1 <- gseaplot(gsea_res, geneSetID = 1, by = "runningScore", title = gsea_res$Description[1])
@@ -637,9 +749,9 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
       
       gseaplot2(gsea_res, geneSetID = 1, title = gsea_res$Description[1])
       gseaplot2(gsea_res, geneSetID = 1:3)
-      plot <- gseaplot2(gsea_res, geneSetID = 1:3, pvalue_table = TRUE,
+      gsea_rs_plot <- gseaplot2(gsea_res, geneSetID = 1:3, pvalue_table = TRUE,
                         color = c("#E495A5", "#86B875", "#7DB0DD"), ES_geom = "dot")
-      ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_GSEA_gseaplot.png"), plot = plot, width = 15, height = 15)
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_", cell_type, "_", stim, "_GSEA_gseaplot.png"), plot = gsea_rs_plot, width = 15, height = 15)
     }
     }
   }
@@ -647,12 +759,403 @@ ggsave(filename = paste0(dir_save, "GSEA_gseaplot.png"), plot = plot, width = 15
 
 
 
-## Radial organization of scRNAseq clusters - to get around issue with differing cluster IDs - GIS - Ross something Florida 
-## Look at expression of our immune correlates in the LN after vaccination with M72 - spatial expression of different markers on different cell types to understand how M72 activates immune cells in the LN to generate memory - healthy participants vaccinated with M72 vs placebo 
 
 
 
 
+
+
+
+
+
+
+## DEG and clusterProfiler for all clusters and STIMs
+
+```{r}
+# Identify unique features in obj@meta.data$feature_based_ID_letter and obj@STIM
+  #clusters <- unique(obj$feature_based_ID_letter)
+  clusters<- setdiff(unique(obj$feature_based_ID_letter), c("S", "L", "R"))
+  stim_conditions <- setdiff(unique(obj$STIM), "UNSTIM")
+  
+  # Directory to save plots
+  dir_save <- "output/dataset_full/"
+  
+  # Outer loop through each STIM condition
+  for (stim in stim_conditions) {
+    # Subset the Seurat obj based on STIM condition
+    obj_stim <- subset(obj, STIM == stim)
+    
+    # Inner loop through each cluster in clusters
+    for (cluster in clusters) {
+      # Subset the Seurat obj based on clusters
+      obj_subset <- subset(obj_stim, feature_based_ID_letter == cluster)
+      
+      # Set these as identities in the Seurat obj_subset
+      obj_subset <- SetIdent(obj_subset, value = obj_subset$VISIT)
+      
+      # Perform differential expression
+      de_results <- FindMarkers(
+        obj_subset, 
+        ident.1 = "D37", 
+        ident.2 = "D0", 
+        logfc.threshold = 0.25,  # Log fold change threshold (adjust as needed)
+        test.use = "LR",  # Using logistic regression
+        p.value = 0.05
+      )
+      
+      # Adjust p-values for multiple testing using Benjamini-Hochberg method
+      de_results$padj <- p.adjust(de_results$p_val, method = "BH")
+      
+      # Filter results based on adjusted p-value
+      significant_genes <- subset(de_results, padj < 0.05)
+      
+      # Add gene names from row names to a new column called 'gene'
+      significant_genes$gene <- rownames(significant_genes)
+      
+      # Determine the number of top genes to use
+      num_top_genes <- min(20, nrow(significant_genes))
+      
+      # Sort by p-value and select the top genes
+      top_genes <- significant_genes %>%
+        arrange(p_val) %>%
+        slice(1:num_top_genes)
+      
+      # Create a volcano plot
+      volcano_plot <- ggplot(significant_genes, aes(x=avg_log2FC, y=-log10(p_val))) +
+        geom_point(aes(col=padj < 0.1), alpha=0.5) +  # Color points by adjusted p-value threshold
+        scale_color_manual(values = c("grey", "red")) +
+        theme_minimal() +
+        labs(x="Log2 Fold Change", y="-Log10 P-value", title=paste("Volcano Plot of Differential Expression for cluster", cluster, "under", stim, "condition")) +
+        theme(legend.position="none")
+      
+      # Highlight and label the top genes
+      volcano_plot <- volcano_plot +
+        geom_point(data=top_genes, aes(x=avg_log2FC, y=-log10(p_val)), color="red", size=3) +
+        geom_text(data=top_genes, aes(x=avg_log2FC, y=-log10(p_val), label=gene), vjust=1.5, color="black", size=3)
+      
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_volcanoDEG.png"), plot = volcano_plot, width = 8, height = 10)
+      
+      # Create heatmaps
+      # Extract the expression data for significant genes
+      all_genes <- rownames(obj_subset)
+      sig_genes <- intersect(all_genes, rownames(significant_genes))
+      data_matrix <- GetAssayData(obj_subset, slot = "data")[sig_genes, ]
+      
+      if (!is.matrix(data_matrix)) {
+        data_matrix <- as.matrix(data_matrix)
+      }
+      
+      # Create the heatmap
+      #Heatmap(data_matrix, 
+      #       cluster_rows = TRUE, 
+      #      cluster_columns = TRUE,
+      #     show_row_names = TRUE,
+      #   show_column_names = TRUE,
+      #   row_title = "Significant Genes", 
+      #  column_title = "Samples",
+      # heatmap_legend_param = list(title = "Expression Level", at = c(min(data_matrix, na.rm = TRUE), max(data_matrix, na.rm = TRUE)), labels = c("Low", "High")))
+      
+      # Create heatmap of only top genes
+      # Ensure gene names are in a column if they are currently row names
+      if("gene" %in% colnames(top_genes)) {
+        top_gene_names <- top_genes$gene
+      } else {
+        top_gene_names <- rownames(top_genes)
+      }
+      
+      # Extract the expression data for these top genes
+      data_matrix <- GetAssayData(obj_subset, slot = "data")[top_gene_names, ]
+      
+      # Convert to matrix if not already
+      if (!is.matrix(data_matrix)) {
+        data_matrix <- as.matrix(data_matrix)
+      }
+      
+      # Create the heatmap
+      #Heatmap(data_matrix,
+      #       cluster_rows = TRUE,
+      #      cluster_columns = TRUE,
+      #     show_row_names = TRUE,
+      #    show_column_names = TRUE,
+      #   row_title = "Top Significant Genes",
+      #  column_title = "Samples",
+      # heatmap_legend_param = list(title = "Expression Level", at = c(min(data_matrix, na.rm = TRUE), max(data_matrix, na.rm = TRUE)), labels = c("Low", "High")))
+      
+      # Dot plots
+      # Sort by p-value and select the top genes
+      top_genes <- significant_genes %>%
+        arrange(p_val) %>%
+        slice(1:num_top_genes)
+      
+      # Create a dot plot
+      plot <- ggplot(top_genes, 
+                     aes(x = gene, y = avg_log2FC, size = -log10(p_val), color = avg_log2FC)) +
+        geom_point(alpha=0.6) +
+        scale_size(range = c(3, 8)) +
+        scale_color_gradient(low = "blue", high = "red") +
+        theme_bw() +
+        labs(title = paste("Top Differentially Expressed Genes for cluster", cluster, "under", stim, "condition"),
+             x = "Gene", y = "Average Log Fold Change") +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+      
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_dotDEGstats.png"), plot = plot, width = 8, height = 5)
+      
+      # Create a DotPlot in Seurat
+      # Extract the 'gene' column as a vector
+      top_DEG <- top_genes$gene
+      
+      # Check if top_DEG contains any genes before plotting
+      if (length(top_DEG) > 0) {
+        plot <- DotPlot(obj_subset, features = top_DEG, cols = c("blue", "red")) +
+          theme_bw() +
+          ggtitle(paste("Top Differentially Expressed Genes for cluster", cluster, "under", stim, "condition")) +
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+                axis.text.y = element_text(angle = 90, vjust = 0.5, hjust = 0.5),
+                axis.title.x = element_blank(),
+                axis.title.y = element_blank())
+    
+        # Extract the legends
+        legend_color <- cowplot::get_legend(plot + guides(size = "none"))
+        legend_size <- cowplot::get_legend(plot + guides(color = "none"))
+    
+        # Combine the legends with some vertical space
+        legends <- cowplot::plot_grid(legend_color, legend_size, ncol = 1, rel_heights = c(1, 1), align = "v")
+    
+        # Combine the plot and legends
+        combined_plot <- cowplot::plot_grid(
+          plot + theme(legend.position = "none"),
+          cowplot::plot_grid(NULL, legends, ncol = 1, rel_heights = c(0.03, 1)),
+          ncol = 2,
+          rel_widths = c(3, 0.75)
+        )
+    
+        ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_dotDEG.png"), plot = combined_plot, width = 9, height = 3)
+      } else {
+          print(paste("No top DEGs found for DotPlot for cluster", cluster, "under", stim, "condition"))
+      }       
+      
+      # Violin plot for a few selected genes
+      plot <- VlnPlot(obj_subset, features = c(top_DEG), group.by = "VISIT",
+                      pt.size = 0)
+      
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_violinDEG.png"), plot = plot, width = 8, height = 30)
+      
+      # ClusterProfiler Analysis
+      # Prepare gene list for GSEA (ranks based on logFC or other metric)
+      gene_list <- de_results$avg_log2FC
+      names(gene_list) <- rownames(de_results)
+      gene_list <- sort(gene_list, decreasing = TRUE)
+      
+      # Convert gene symbols to Entrez IDs for clusterProfiler
+      #top_genes_list <- top_genes$gene
+      #top_genes_list_entrez <- bitr(top_genes_list, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db, drop = TRUE)
+      sig_genes <- significant_genes$gene
+      sig_genes_entrez <- bitr(sig_genes, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+      gene_list_entrez <- bitr(names(gene_list), fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+      gene_list <- setNames(gene_list, gene_list_entrez$ENTREZID)
+      
+      # Remove any NA values from gene_list
+      gene_list <- gene_list[!is.na(names(gene_list))]
+      
+      # Verify gene_list content
+      head(gene_list)
+      
+      # Over-representation analysis (ORA)
+      ego <- enrichGO(gene = sig_genes_entrez$ENTREZID,
+                      OrgDb = org.Hs.eg.db,
+                      ont = "BP", # Biological Process
+                      pAdjustMethod = "BH",
+                      pvalueCutoff = 0.05,
+                      qvalueCutoff = 0.05,
+                      readable = TRUE)
+      
+      # Check if ego contains any enriched terms before plotting
+      if (nrow(ego) > 0) {
+        
+        # Plot ORA results
+        ora_dot_plot <- dotplot(ego, showCategory = 20) + ggtitle("Over-representation Analysis")
+        ora_bar_plot <- barplot(ego, showCategory=20) 
+        
+        # Enrichment map
+        # Compute the term similarity matrix
+        ego <- pairwise_termsim(ego)
+        ora_emap_plot <- emapplot(ego) + ggtitle("Enrichment Map of GO Terms")
+        
+        # Gene-concept network
+        ## convert gene ID to Symbol
+        egox <- setReadable(ego, 'org.Hs.eg.db', 'ENTREZID')
+        p1 <- cnetplot(egox, color.params = list(foldChange = gene_list))
+        ## categorySize can be scaled by 'pvalue' or 'geneNum'
+        p2 <- cnetplot(egox, categorySize="pvalue", color.params = list(foldChange = gene_list)) + 
+          scale_color_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
+        p3 <- cnetplot(egox, color.params = list(foldChange = gene_list), circular = TRUE, colorEdge = TRUE) + 
+          scale_color_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
+        ora_gcn_plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
+        ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_ORA_cnetplots.png"), plot = ora_gcn_plot, width = 25, height = 12)
+        
+        # Heatmap classification
+        p1 <- heatplot(egox, showCategory=5)
+        p2 <- heatplot(egox, foldChange=gene_list, showCategory=10) +
+          scale_fill_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
+        ora_hm_plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+        ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_ORA_heatmaps.png"), plot = ora_hm_plot, width = 25, height = 10)
+        
+        # Tree plot
+        #egox2 <- pairwise_termsim(egox)
+        #if (nrow(egox2) > 3) {
+          #p1 <- treeplot(egox2)
+          #p2 <- treeplot(egox2, hclust_method = "average")
+          #plot <- aplot::plot_list(p1, p2, tag_levels='A')
+          #ggsave(filename = paste0(dir_save, cell_type, "_", stim, "_ORA_treeplots.png"), plot = plot, width = 25, height = 10)
+        #} else {
+          #print(paste("Skipping tree plot for", cell_type, "under", stim, "condition due to insufficient clusters"))
+        #}
+      #} else {
+        #print(paste("No enriched terms found for", cell_type, "under", stim, "condition"))
+      #}
+      
+      # Gene Set Enrichment Analysis (GSEA)
+      gsea_res <- gseGO(geneList = gene_list,
+                        OrgDb = org.Hs.eg.db,
+                        ont = "BP",
+                        pAdjustMethod = "BH",
+                        pvalueCutoff = 1, #CHANGE THIS!!!
+                        verbose = FALSE,
+                        by = "fgsea")
+      
+      # Save GSEA result to an RDS file
+      saveRDS(gsea_res, file = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_gsea_results.rds"))
+      
+      # Plot GSEA results
+      gsea_dot_plot <- dotplot(gsea_res, showCategory=30) + ggtitle("dotplot for GSEA")
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_GSEA_dotplot.png"), plot = gsea_dot_plot, width = 8, height = 12)
+      
+      # Gene-concept network
+      ## convert gene ID to Symbol
+      egox <- setReadable(gsea_res, 'org.Hs.eg.db', 'ENTREZID')
+      p1 <- cnetplot(egox, color.params = list(foldChange = gene_list))
+      ## categorySize can be scaled by 'pvalue' or 'geneNum'
+      p2 <- cnetplot(egox, categorySize="pvalue", color.params = list(foldChange = gene_list)) + 
+        scale_color_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
+      p3 <- cnetplot(egox, color.params = list(foldChange = gene_list), circular = TRUE, colorEdge = TRUE) + 
+        scale_color_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
+      gsea_gcn_plot <- cowplot::plot_grid(p2, p3, ncol=2, labels=LETTERS[1:2], rel_widths=c(.8, 1.2))
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_GSEA_cnetplots.png"), plot = gsea_gcn_plot, width = 25, height = 12)
+      
+      # Heatmap classification
+      p1 <- heatplot(egox, showCategory=5)
+      p2 <- heatplot(egox, foldChange=gene_list, showCategory=5) +
+        scale_fill_gradient2(name='Log2 fold change', low='steelblue', high='firebrick')
+      gsea_hm_plot <- cowplot::plot_grid(p1, p2, ncol=1, labels=LETTERS[1:2])
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_GSEA_heatmaps.png"), plot = gsea_hm_plot, width = 25, height = 10)
+      
+      # Ridgeplot
+      gsea_ridge_plot <- ridgeplot(gsea_res)
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_GSEA_ridgeplot.png"), plot = gsea_ridge_plot, width = 10, height = 20)
+      
+      # Running score and preranked list
+      p1 <- gseaplot(gsea_res, geneSetID = 1, by = "runningScore", title = gsea_res$Description[1])
+      p2 <- gseaplot(gsea_res, geneSetID = 1, by = "preranked", title = gsea_res$Description[1])
+      p3 <- gseaplot(gsea_res, geneSetID = 1, title = gsea_res$Description[1])
+      cowplot::plot_grid(p1, p2, p3, ncol=1, labels=LETTERS[1:3])
+      
+      gseaplot2(gsea_res, geneSetID = 1, title = gsea_res$Description[1])
+      gseaplot2(gsea_res, geneSetID = 1:3)
+      gsea_rs_plot <- gseaplot2(gsea_res, geneSetID = 1:3, pvalue_table = TRUE,
+                        color = c("#E495A5", "#86B875", "#7DB0DD"), ES_geom = "dot")
+      ggsave(filename = paste0(dir_save, "ClusterProfiler_cluster", cluster, "_", stim, "_GSEA_gseaplot.png"), plot = gsea_rs_plot, width = 15, height = 15)
+    }
+    }
+  }
+```
+
+
+### Plot proportion of cell types over feature based clusters
+
+```{r}
+# Assign feature_based_ID as the new identities
+Idents(obj) <- obj@meta.data$feature_based_ID
+
+# Create a mapping of each feature_based_ID to a letter based on the number of cells
+feature_based_ID_counts <- table(Idents(obj))
+sorted_feature_based_IDs <- names(sort(feature_based_ID_counts, decreasing = TRUE))
+label_mapping <- setNames(LETTERS[1:length(sorted_feature_based_IDs)], sorted_feature_based_IDs)
+
+# Add a new column with the letter mapping
+obj@meta.data$feature_based_ID_letter <- label_mapping[as.character(Idents(obj))]
+
+# Verify the change
+head(Idents(obj))
+head(obj@meta.data$feature_based_ID_letter)
+
+plot_FBID_clusters = function (srat, batchcolumn) {
+  ## take an integrated Seurat object, plot distributions over feature_based_ID
+
+  # Ensure the feature_based_ID column is treated as a factor and handle NA values
+  srat@meta.data$feature_based_ID_letter <- as.factor(srat@meta.data$feature_based_ID_letter)
+  srat@meta.data <- srat@meta.data[!is.na(srat@meta.data$feature_based_ID_letter), ]
+
+  # Ensure the batchcolumn is treated as a factor
+  srat@meta.data[[batchcolumn]] <- as.factor(srat@meta.data[[batchcolumn]])
+
+  # Check lengths of the columns
+  if (length(srat@meta.data$feature_based_ID_letter) != length(srat@meta.data[[batchcolumn]])) {
+    stop("The lengths of feature_based_ID_letter and the batch column do not match.")
+  }
+
+  count_table <- table(srat@meta.data$feature_based_ID_letter, srat@meta.data[[batchcolumn]])
+  count_mtx   <- as.data.frame.matrix(count_table)
+  count_mtx$cluster <- rownames(count_mtx)
+  melt_mtx    <- melt(count_mtx)
+  melt_mtx$cluster <- as.factor(melt_mtx$cluster)
+
+  # Calculate the total number of cells per cluster and sort by size in descending order
+  cluster_size   <- aggregate(value ~ cluster, data = melt_mtx, FUN = sum)
+  sorted_labels <- cluster_size$cluster[order(cluster_size$value, decreasing = F)]
+  cluster_size$cluster <- factor(cluster_size$cluster, levels = sorted_labels)
+  melt_mtx$cluster <- factor(melt_mtx$cluster, levels = sorted_labels)
+
+  colnames(melt_mtx)[2] <- "dataset"
+
+  p1 <- ggplot(cluster_size, aes(y = cluster, x = value)) + 
+    geom_bar(position = "dodge", stat = "identity", fill = "grey60") +
+    geom_text(aes(label = value), hjust = 1.5, size = 3) +
+    theme_bw() + scale_x_log10() + 
+    xlab("Cells per cluster, log10 scale") + ylab("")
+  p2 <- ggplot(melt_mtx, aes(x = cluster, y = value, fill = dataset)) +
+    geom_bar(position = "fill", stat = "identity") + theme_bw() + coord_flip() +
+    ylab("Fraction of cells in each dataset") + xlab("Cluster") + theme(legend.position = "left")
+
+  # Create a legend as a text grob using the existing feature_based_ID_letter column
+  legend_text <- paste(label_mapping, names(label_mapping), sep = ": ", collapse = "\n")
+  legend_grob <- textGrob(legend_text, x = unit(0, "npc"), y = unit(1, "npc"), just = c("left", "top"), gp = gpar(fontsize = 7))
+
+  # Combine the plots in a grid format with 3:2 width ratio for p2 and p1
+  combined_plot <- (p2 + p1 + plot_layout(widths = c(3, 2))) / wrap_elements(legend_grob) + plot_layout(heights = c(2, 1))
+
+  combined_plot
+}
+
+plot1 <- plot_FBID_clusters(obj, 'sctype_classification')
+
+pdf(paste0(dir_save, "prop_FBID_celltype_res.clustree.pdf"), height = 5, width = 10)
+print(plot1)
+invisible(dev.off())
+```
+
+
+
+
+
+
+
+
+
+
+
+## Radial organization of scRNAseq clusters - to get around issue with differing cluster IDs - GIS - Ross something Florida
+
+## Look at expression of our immune correlates in the LN after vaccination with M72 - spatial expression of different markers on different cell types to understand how M72 activates immune cells in the LN to generate memory - healthy participants vaccinated with M72 vs placebo - or potentially in the lung? Tissues sampled with biopsy / FNA
 
 #### **Jaccard Index**
 

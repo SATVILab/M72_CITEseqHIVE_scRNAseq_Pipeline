@@ -1,0 +1,1101 @@
+---
+title: "Evaluation of cluster consistency using the Adjusted Rand Index"
+format:
+  html:
+        code-fold: true
+editor: visual
+---
+
+## Description
+
+This script will use the Adjusted Rand Index (ARI) to compute cluster consistency scores of partitioned and full datasets. The ARI will be calculated after partitioning the full dataset to include a range from 10-100% of all datapoints, increasing by 10% with each run. An alternate analysis will also be run which accumulates data by PID. This analysis will be run over multiple iterations, where the order of PIDs to be accumulated is shuffled before each iteration. Each partitioned dataset will be independently clustered before ARI calculation. The ARI cluster consistency scores will then be plotted as a function of percent total datapoints.
+
+### Clear console
+
+```{r, output = FALSE}
+ls()
+rm(list=ls())
+```
+
+### Set output directory
+
+```{r}
+dir_save <- "output/dataset_full/"
+```
+
+### Load libraries
+
+```{r, message = FALSE, warning = FALSE}
+library(Seurat)
+library(mclust) 
+library(ggplot2)
+```
+
+The Seurat object will be reloaded for each method to reset any changes to original clustering before running each ARI analysis.
+
+### Primary configurations for calculating ARI
+
+#### Accumulate by PID
+
+```{r, message = FALSE, warning = FALSE, output = FALSE}
+
+load("output/dataset_full/Seurat_FilterMerge_obj.Rdata")
+obj
+
+### Confirm Seruat object contains assays for RNA
+Assays(obj)
+
+# Normmalize RNA data
+obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000) 
+
+# Calculate the top 2000 highly variable features
+obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000) 
+
+# Use defaults to scale only variable features 
+obj <- ScaleData(obj) 
+
+# Perform PCA for linear dimensional reduction on scaled data
+obj <- RunPCA(obj, features = NULL) 
+
+# Cluster cells based on RNA data
+obj <- FindNeighbors(obj, reduction = "pca")
+
+# Perform clustering on the full dataset
+obj <- FindClusters(obj, resolution = 0.6)
+original_clusters <- Idents(obj)
+
+# Extract unique PIDs
+unique_pids <- unique(obj@meta.data$PID)
+
+# Function to perform clustering and compute ARI
+compute_ari <- function(obj, pids, iterations) {
+  
+  ari_values <- c()
+  
+  for (i in 1:iterations) {
+    
+    print(paste("Computing ARI for", length(pids), "PIDs", "iteration", i))
+    
+    subset_cells <- colnames(obj)[obj@meta.data$PID %in% pids]
+    
+    # SUBSET 1
+    set.seed(i)
+    # Subset dataset to the specified PIDs
+    obj_1 <- subset(obj, cells = subset_cells)
+    # Perform clustering on the subset
+    subset_obj_1 <- FindClusters(obj_1, resolution = 0.6)
+    subset_clusters_1 <- Idents(subset_obj_1)
+    
+    # Compute ARI between the two clusterings
+    #ari <- adjustedRandIndex(subset_clusters_1, subset_clusters_2)
+    ari <- adjustedRandIndex(original_clusters[subset_cells], subset_clusters_1)
+    ari_values <- c(ari_values, ari)
+    
+    print(paste("Number of PIDs:", length(pids), "ARI:", ari))
+  }
+  
+  return(mean(ari_values))
+}
+
+# Define the number of PIDs and number of iterations
+num_pids <- length(unique_pids)
+iterations <- 4  
+
+# Compute ARI for each number of PIDs
+ari_results <- sapply(1:num_pids, function(n) {
+  pids <- sample(unique_pids, size = n)
+  compute_ari(obj, pids, iterations)
+})
+
+# Create a data frame for plotting
+ari_df <- data.frame(
+  PIDs = 1:num_pids,
+  ARI = ari_results
+)
+
+```
+
+```{r}
+# Plot the results
+ggplot(ari_df, aes(x = PIDs, y = ARI)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "ARI vs Number of PIDs", x = "Number of PIDs", y = "ARI") +
+  theme_minimal()
+```
+
+#### Accumulating PIDs pre-processed separately with shuffled PIDs
+
+```{r, message = FALSE, warning = FALSE, output = FALSE}
+
+load("output/dataset_full/Seurat_FilterMerge_obj.Rdata")
+obj
+
+### Confirm Seurat object contains assays for RNA
+Assays(obj)
+
+# Normalize RNA data
+obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000) 
+
+# Calculate the top 2000 highly variable features
+obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000) 
+
+# Use defaults to scale only variable features 
+obj <- ScaleData(obj) 
+
+# Perform PCA for linear dimensional reduction on scaled data
+obj <- RunPCA(obj, features = NULL) 
+
+# Cluster cells based on RNA data
+obj <- FindNeighbors(obj, reduction = "pca")
+
+# Perform clustering on the full dataset
+obj <- FindClusters(obj, resolution = 0.6)
+original_clusters <- Idents(obj)
+
+# Extract unique PIDs
+unique_pids <- unique(obj@meta.data$PID)
+
+# Function to perform clustering and compute ARI
+compute_ari <- function(obj, num_pids, iterations) {
+  ari_values <- matrix(NA, nrow = iterations, ncol = num_pids)
+  
+  for (i in 1:iterations) {
+    # Set a random seed using the iteration number for reproducibility
+    set.seed(i)
+    
+    # Shuffle all PIDs
+    shuffled_pids <- sample(unique_pids)
+    
+    for (n in 1:num_pids) {
+      # Subset to the number of PIDs (1 - all PIDs)
+      subset_pids <- shuffled_pids[1:n]
+      subset_cells <- colnames(obj)[obj@meta.data$PID %in% subset_pids]
+      
+      # Subset the object using the cumulative cells
+      obj_subset <- subset(obj, cells = subset_cells)
+      
+      # Perform clustering on the subset
+      subset_obj <- FindClusters(obj_subset, resolution = 0.6)
+      subset_clusters <- Idents(subset_obj)
+      
+      # Compute ARI between the original clusters and the subset clusters
+      ari <- adjustedRandIndex(original_clusters[subset_cells], subset_clusters)
+      ari_values[i, n] <- ari
+      
+      print(paste("Iteration:", i, "Number of PIDs:", n, "ARI:", ari))
+    }
+  }
+  
+  return(ari_values)
+}
+
+# Define the number of PIDs and number of iterations
+num_pids <- length(unique_pids)
+iterations <- 4  # Increase the number of iterations for robustness
+
+# Compute ARI for each number of PIDs
+ari_matrix <- compute_ari(obj, num_pids, iterations)
+
+# Compute the mean ARI for each number of PIDs
+ari_means <- colMeans(ari_matrix, na.rm = TRUE)
+
+# Create a data frame for plotting
+ari_df <- data.frame(
+  PIDs = rep(1:num_pids, each = iterations),
+  Iteration = rep(1:iterations, times = num_pids),
+  ARI = as.vector(ari_matrix)
+)
+
+# Add a column for the mean ARI
+mean_ari_df <- data.frame(
+  PIDs = 1:num_pids,
+  Mean_ARI = ari_means
+)
+
+# Merge the data frames
+ari_df <- merge(ari_df, mean_ari_df, by = "PIDs")
+```
+
+```{r, warning = FALSE}
+# Plot the results
+ggplot(ari_df, aes(x = PIDs, y = ARI, group = Iteration)) +
+  geom_line(aes(color = as.factor(Iteration))) +
+  geom_point(aes(color = as.factor(Iteration))) +
+  geom_line(aes(y = Mean_ARI), color = "black", size = 1) +
+  labs(title = "ARI vs Number of PIDs - PIDs shuffled for each Iteration",
+       x = "Number of PIDs",
+       y = "ARI",
+       color = "Iteration") +
+  theme_minimal()
+```
+
+#### Accumulating PIDs pre-processed separately with shuffled PIDs and simulated data up to 50 PIDs
+
+```{r, message = FALSE, warning = FALSE, output = FALSE}
+# Load the Seurat object
+load("output/dataset_full/Seurat_FilterMerge_obj.Rdata")
+print(obj)
+
+# Confirm Seurat object contains assays for RNA
+print(Assays(obj))
+
+# Extract unique PIDs
+unique_pids <- unique(obj@meta.data$PID)
+
+# Calculate the number of PIDs to simulate
+num_pids_to_simulate <- 50 - length(unique_pids)
+
+# Check if simulation is needed
+if (num_pids_to_simulate > 0) {
+  
+  # Sample PIDs to copy
+  sampled_pids <- sample(unique_pids, num_pids_to_simulate)
+  
+  # Subset the duplicated object to the sampled PIDs
+  obj_sim <- subset(obj, subset = PID %in% sampled_pids)
+  
+  # Modify the PID and cell_id for the simulated data
+  obj_sim@meta.data$PID <- paste0(obj_sim@meta.data$PID, "_sim")
+  obj_sim@meta.data$cell_id <- paste0(obj_sim@meta.data$cell_id, "_sim")
+  
+  # Merge the simulated object with the original object
+  obj <- merge(obj, obj_sim)
+}
+
+# Normalize RNA data
+obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000) 
+
+# Calculate the top 2000 highly variable features
+obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000) 
+
+# Use defaults to scale only variable features 
+obj <- ScaleData(obj) 
+
+# Perform PCA for linear dimensional reduction on scaled data
+obj <- RunPCA(obj, features = NULL) 
+
+# Cluster cells based on RNA data
+obj <- FindNeighbors(obj, reduction = "pca")
+
+# Perform clustering on the full dataset
+obj <- FindClusters(obj, resolution = 0.6)
+original_clusters <- Idents(obj)
+
+# Extract unique PIDs
+unique_pids <- unique(obj@meta.data$PID)
+
+# Function to perform clustering and compute ARI
+compute_ari <- function(obj, num_pids, iterations) {
+  ari_values <- matrix(NA, nrow = iterations, ncol = num_pids)
+  
+  for (i in 1:iterations) {
+    # Set a random seed using the iteration number for reproducibility
+    set.seed(i)
+    
+    # Shuffle all PIDs
+    shuffled_pids <- sample(unique_pids)
+    
+    for (n in 1:num_pids) {
+      # Subset to the number of PIDs (1 - all PIDs)
+      subset_pids <- shuffled_pids[1:n]
+      subset_cells <- colnames(obj)[obj@meta.data$PID %in% subset_pids]
+      
+      # Subset the object using the cumulative cells
+      obj_subset <- subset(obj, cells = subset_cells)
+      
+      # Perform clustering on the subset
+      subset_obj <- FindClusters(obj_subset, resolution = 0.6)
+      subset_clusters <- Idents(subset_obj)
+      
+      # Compute ARI between the original clusters and the subset clusters
+      ari <- adjustedRandIndex(original_clusters[subset_cells], subset_clusters)
+      ari_values[i, n] <- ari
+      
+      print(paste("Iteration:", i, "Number of PIDs:", n, "ARI:", ari))
+    }
+  }
+  
+  return(ari_values)
+}
+
+# Define the number of PIDs and number of iterations
+num_pids <- length(unique_pids)
+iterations <- 4  # Increase the number of iterations for robustness
+
+# Compute ARI for each number of PIDs
+ari_matrix <- compute_ari(obj, num_pids, iterations)
+
+# Compute the mean ARI for each number of PIDs
+ari_means <- colMeans(ari_matrix, na.rm = TRUE)
+
+# Create a data frame for plotting
+ari_df <- data.frame(
+  PIDs = rep(1:num_pids, each = iterations),
+  Iteration = rep(1:iterations, times = num_pids),
+  ARI = as.vector(ari_matrix)
+)
+
+# Add a column for the mean ARI
+mean_ari_df <- data.frame(
+  PIDs = 1:num_pids,
+  Mean_ARI = ari_means
+)
+
+# Merge the data frames
+ari_df <- merge(ari_df, mean_ari_df, by = "PIDs")
+```
+
+```{r, warning = FALSE}
+# Plot the results
+ggplot(ari_df, aes(x = PIDs, y = ARI, group = Iteration)) +
+  geom_line(aes(color = as.factor(Iteration))) +
+  geom_point(aes(color = as.factor(Iteration))) +
+  geom_line(aes(y = Mean_ARI), color = "black", size = 1) +
+  labs(title = "ARI vs Number of PIDs - PIDs shuffled for each Iteration",
+       x = "Number of PIDs",
+       y = "ARI",
+       color = "Iteration") +
+  theme_minimal()
+```
+
+#### Accumulate by percent of cells
+
+```{r, message = FALSE, warning = FALSE, output = FALSE}
+
+load("output/dataset_full/Seurat_FilterMerge_obj.Rdata")
+obj
+
+### Confirm Seurat object contains assays for RNA
+Assays(obj)
+
+# Normalize RNA data
+obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000) 
+
+# Calculate the top 2000 highly variable features
+obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000) 
+
+# Use defaults to scale only variable features 
+obj <- ScaleData(obj) 
+
+# Perform PCA for linear dimensional reduction on scaled data
+obj <- RunPCA(obj, features = NULL) 
+
+# Cluster cells based on RNA data
+obj <- FindNeighbors(obj, reduction = "pca")
+
+# Perform clustering on the full dataset
+obj <- FindClusters(obj, resolution = 0.6)
+original_clusters <- Idents(obj)
+
+# Function to perform clustering and compute ARI
+compute_ari <- function(obj, cumulative_cells, iterations) {
+  print(paste("Computing ARI for", length(cumulative_cells), "cells", "iteration", iterations))
+  
+  ari_values <- c()
+  
+  for (i in 1:iterations) {
+    # Set a random seed using the iteration number for reproducibility
+    set.seed(i)
+    
+    # Subset the object using the cumulative cells
+    obj_subset <- subset(obj, cells = cumulative_cells)
+    
+    # Perform clustering on the subset
+    subset_obj <- FindClusters(obj_subset, resolution = 0.6)
+    subset_clusters <- Idents(subset_obj)
+    
+    # Compute ARI between the original clusters and the subset clusters
+    ari <- adjustedRandIndex(original_clusters[cumulative_cells], subset_clusters)
+    ari_values <- c(ari_values, ari)
+  }
+  
+  return(mean(ari_values))
+}
+
+# Define scales and number of iterations
+scales <- seq(0.1, 1.0, by = 0.1)
+iterations <- 4
+
+# Initialize a list to store the cumulative cells
+cumulative_cells <- list()
+
+# Compute ARI for each scale
+ari_results <- sapply(scales, function(scale) {
+  # Calculate the number of cells to include for the current scale
+  num_cells <- floor(scale * ncol(obj))
+  
+  # For the first scale, take the first 10% of the cells
+  if (length(cumulative_cells) == 0) {
+    cumulative_cells <<- colnames(obj)[1:num_cells]
+  } else {
+    # For subsequent scales, take the first 20%, 30%, etc.
+    cumulative_cells <<- colnames(obj)[1:num_cells]
+  }
+  
+  # Compute ARI for the current cumulative subset
+  compute_ari(obj, cumulative_cells, iterations)
+})
+
+# Create a data frame for plotting
+ari_df <- data.frame(
+  Scale = scales * 100, # Convert to percentage
+  ARI = ari_results
+)
+
+```
+
+```{r, warning = FALSE}
+# Plot the results
+ggplot(ari_df, aes(x = Scale, y = ARI)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mean ARI at Different Data Scales",
+       x = "Percentage of Data",
+       y = "Mean ARI") +
+  theme_minimal()
+```
+
+#### Accumulating percent cells pre-processed separately with shuffled cell IDs
+
+```{r, message = FALSE, warning = FALSE, output = FALSE}
+load("output/dataset_full/Seurat_FilterMerge_obj.Rdata")
+obj
+
+### Confirm Seurat object contains assays for RNA
+Assays(obj)
+
+# Normalize RNA data
+obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000) 
+
+# Calculate the top 2000 highly variable features
+obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000) 
+
+# Use defaults to scale only variable features 
+obj <- ScaleData(obj) 
+
+# Perform PCA for linear dimensional reduction on scaled data
+obj <- RunPCA(obj, features = NULL) 
+
+# Cluster cells based on RNA data
+obj <- FindNeighbors(obj, reduction = "pca")
+
+# Perform clustering on the full dataset
+obj <- FindClusters(obj, resolution = 0.6)
+original_clusters <- Idents(obj)
+
+# Extract unique cell IDs
+unique_cellIDs <- unique(obj@meta.data$cell_id)
+
+# Function to perform clustering and compute ARI
+compute_ari <- function(obj, scales, iterations) {
+  ari_values <- matrix(NA, nrow = iterations, ncol = length(scales))
+  
+  for (i in 1:iterations) {
+    # Set a random seed using the iteration number for reproducibility
+    set.seed(i)
+    
+    # Shuffle all cells
+    shuffled_cells <- sample(unique_cellIDs)
+    
+    #cumulative_cells <- list()
+    
+    for (j in 1:length(scales)) {
+      scale <- scales[j]
+      
+      # Calculate the number of cells to include for the current scale
+      num_cells <- floor(scale * length(shuffled_cells))
+      
+      # Subset to th enumber of cells (10 - 100%)
+      subset_cellIDs <- shuffled_cells[1:num_cells]
+      subset_cells <- colnames(obj)[obj@meta.data$cell_id %in% subset_cellIDs]
+      
+      # Subset the object using the cumulative cells
+      obj_subset <- subset(obj, cells = subset_cells)
+      
+      # Perform clustering on the subset
+      subset_obj <- FindClusters(obj_subset, resolution = 0.6)
+      subset_clusters <- Idents(subset_obj)
+      
+      # Compute ARI between the original clusters and the subset clusters
+      ari <- adjustedRandIndex(original_clusters[subset_cells], subset_clusters)
+      ari_values[i, j] <- ari
+      
+      print(paste("Iteration:", i, "Scale:", scale, "ARI:", ari))
+    }
+  }
+  
+  return(ari_values)
+}
+
+# Define scales and number of iterations
+scales <- seq(0.1, 1.0, by = 0.1)
+iterations <- 4  # Increase the number of iterations for robustness
+
+# Compute ARI for each scale
+ari_matrix <- compute_ari(obj, scales, iterations)
+
+# Compute the mean ARI for each scale
+ari_means <- colMeans(ari_matrix, na.rm = TRUE)
+
+# Create a data frame for plotting
+ari_df <- data.frame(
+  Scale = rep(scales * 100, each = iterations), # Convert to percentage
+  Iteration = rep(1:iterations, times = length(scales)),
+  ARI = as.vector(ari_matrix)
+)
+
+# Add a column for the mean ARI
+mean_ari_df <- data.frame(
+  Scale = scales * 100,
+  Mean_ARI = ari_means
+)
+
+# Merge the data frames
+ari_df <- merge(ari_df, mean_ari_df, by = "Scale")
+```
+
+```{r, warning = FALSE}
+# Plot the results
+ggplot(ari_df, aes(x = Scale, y = ARI, group = Iteration)) +
+  geom_line(aes(color = as.factor(Iteration))) +
+  geom_point(aes(color = as.factor(Iteration))) +
+  geom_line(aes(y = Mean_ARI), color = "black", size = 1) +
+  labs(title = "ARI vs Percentage of Cells",
+       x = "Percentage of Cells",
+       y = "ARI",
+       color = "Iteration") +
+  theme_minimal()
+```
+
+#### Accumulating PIDs pre-processed separately with shuffled PIDs and simulated data up to 50 PIDs
+
+```{r, message = FALSE, warning = FALSE, output = FALSE}
+# Load the Seurat object
+load("output/dataset_full/Seurat_FilterMerge_obj.Rdata")
+print(obj)
+
+# Confirm Seurat object contains assays for RNA
+print(Assays(obj))
+
+# Extract unique PIDs
+unique_pids <- unique(obj@meta.data$PID)
+
+# Calculate the number of PIDs to simulate
+num_pids_to_simulate <- 50 - length(unique_pids)
+
+# Check if simulation is needed
+if (num_pids_to_simulate > 0) {
+  
+  # Sample PIDs to copy
+  sampled_pids <- sample(unique_pids, num_pids_to_simulate)
+  
+  # Subset the duplicated object to the sampled PIDs
+  obj_sim <- subset(obj, subset = PID %in% sampled_pids)
+  
+  # Modify the PID and cell_id for the simulated data
+  obj_sim@meta.data$PID <- paste0(obj_sim@meta.data$PID, "_sim")
+  obj_sim@meta.data$cell_id <- paste0(obj_sim@meta.data$cell_id, "_sim")
+  
+  # Merge the simulated object with the original object
+  obj <- merge(obj, obj_sim)
+}
+
+# Normalize RNA data
+obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000) 
+
+# Calculate the top 2000 highly variable features
+obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000) 
+
+# Use defaults to scale only variable features 
+obj <- ScaleData(obj) 
+
+# Perform PCA for linear dimensional reduction on scaled data
+obj <- RunPCA(obj, features = NULL) 
+
+# Cluster cells based on RNA data
+obj <- FindNeighbors(obj, reduction = "pca")
+
+# Perform clustering on the full dataset
+obj <- FindClusters(obj, resolution = 0.6)
+original_clusters <- Idents(obj)
+
+# Extract unique cell IDs
+unique_cellIDs <- unique(obj@meta.data$cell_id)
+
+# Function to perform clustering and compute ARI
+compute_ari <- function(obj, scales, iterations) {
+  ari_values <- matrix(NA, nrow = iterations, ncol = length(scales))
+  
+  for (i in 1:iterations) {
+    # Set a random seed using the iteration number for reproducibility
+    set.seed(i)
+    
+    # Shuffle all cells
+    shuffled_cells <- sample(unique_cellIDs)
+    
+    #cumulative_cells <- list()
+    
+    for (j in 1:length(scales)) {
+      scale <- scales[j]
+      
+      # Calculate the number of cells to include for the current scale
+      num_cells <- floor(scale * length(shuffled_cells))
+      
+      # Subset to th enumber of cells (10 - 100%)
+      subset_cellIDs <- shuffled_cells[1:num_cells]
+      subset_cells <- colnames(obj)[obj@meta.data$cell_id %in% subset_cellIDs]
+      
+      # Subset the object using the cumulative cells
+      obj_subset <- subset(obj, cells = subset_cells)
+      
+      # Perform clustering on the subset
+      subset_obj <- FindClusters(obj_subset, resolution = 0.6)
+      subset_clusters <- Idents(subset_obj)
+      
+      # Compute ARI between the original clusters and the subset clusters
+      ari <- adjustedRandIndex(original_clusters[subset_cells], subset_clusters)
+      ari_values[i, j] <- ari
+      
+      print(paste("Iteration:", i, "Scale:", scale, "ARI:", ari))
+    }
+  }
+  
+  return(ari_values)
+}
+
+# Define scales and number of iterations
+scales <- seq(0.1, 1.0, by = 0.1)
+iterations <- 4  # Increase the number of iterations for robustness
+
+# Compute ARI for each scale
+ari_matrix <- compute_ari(obj, scales, iterations)
+
+# Compute the mean ARI for each scale
+ari_means <- colMeans(ari_matrix, na.rm = TRUE)
+
+# Create a data frame for plotting
+ari_df <- data.frame(
+  Scale = rep(scales * 100, each = iterations), # Convert to percentage
+  Iteration = rep(1:iterations, times = length(scales)),
+  ARI = as.vector(ari_matrix)
+)
+
+# Add a column for the mean ARI
+mean_ari_df <- data.frame(
+  Scale = scales * 100,
+  Mean_ARI = ari_means
+)
+
+# Merge the data frames
+ari_df <- merge(ari_df, mean_ari_df, by = "Scale")
+```
+
+```{r, warning = FALSE}
+# Plot the results
+ggplot(ari_df, aes(x = Scale, y = ARI, group = Iteration)) +
+  geom_line(aes(color = as.factor(Iteration))) +
+  geom_point(aes(color = as.factor(Iteration))) +
+  geom_line(aes(y = Mean_ARI), color = "black", size = 1) +
+  labs(title = "ARI vs Percentage of Cells",
+       x = "Percentage of Cells",
+       y = "ARI",
+       color = "Iteration") +
+  theme_minimal()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+### Alternative configurations for calculating ARI
+
+#### PRE-PROCESS TOGETHER, SUBSET ONCE, CLUSTER TWO INDEPENDENT TIMES ON THE SAME DATA POINTS AT EACH PERCENTAGE OF THE DATA POINTS, INTRODUCE NOISE WITH CHANGING SEED
+
+```{r, eval = FALSE}
+
+load("output/dataset_full/Seurat_FilterMerge_obj.Rdata")
+obj
+
+### Confirm Seruat object contains assays for RNA
+Assays(obj)
+
+# Normmalize RNA data
+obj <- NormalizeData(obj, normalization.method = "LogNormalize", scale.factor = 10000) 
+
+# Calculate the top 2000 highly variable features
+obj <- FindVariableFeatures(obj, selection.method = "vst", nfeatures = 2000) 
+
+# Use defaults to scale only variable features 
+obj <- ScaleData(obj) 
+
+# Perform PCA for linear dimensional reduction on scaled data
+obj <- RunPCA(obj, features = NULL) 
+
+# Cluster cells based on RNA data
+obj <- FindNeighbors(obj, reduction = "pca")
+#obj <- FindClusters(obj, cluster.name = "unintegrated_clusters")
+
+
+# Function to perform clustering and compute ARI
+compute_ari <- function(obj, scale, iterations) {
+  ari_values <- c()
+  
+  for (i in 1:iterations) {
+    # Subset dataset to the specified scale
+    subset_cells <- sample(colnames(obj), size = floor(scale * ncol(obj)))
+    subset_obj <- subset(obj, cells = subset_cells)
+    
+    # Perform clustering on the subset
+    set.seed(i)
+    subset_obj <- FindClusters(subset_obj, resolution = 0.6)
+    subset_clusters <- Idents(subset_obj)
+    
+    # Perform clustering again on the same subset
+    set.seed(i + 100)
+    subset_obj <- FindClusters(subset_obj, resolution = 0.6)
+    subset_clusters_2 <- Idents(subset_obj)
+    
+    # Compute ARI between the two clusterings
+    ari <- adjustedRandIndex(subset_clusters, subset_clusters_2)
+    ari_values <- c(ari_values, ari)
+  }
+  
+  return(mean(ari_values))
+}
+
+# Define scales and number of iterations
+scales <- seq(0.1, 1.0, by = 0.1)
+#iterations <- 3
+iterations <- 1
+
+# Compute ARI for each scale
+ari_results <- sapply(scales, function(scale) compute_ari(obj, scale, iterations))
+
+# Create a data frame for plotting
+ari_df <- data.frame(
+  Scale = scales * 100, # Convert to percentage
+  ARI = ari_results
+)
+
+# Plot the results
+ggplot(ari_df, aes(x = Scale, y = ARI)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mean ARI at Different Data Scales",
+       x = "Percentage of Data",
+       y = "Mean ARI") +
+  theme_minimal()
+
+```
+
+#### PRE-PROCESS AND CLUSTER SEPARATELY, INTRODUCE VARIABILITY IN SEED - DIFFERENT SUBSETS
+
+```{r, eval = FALSE}
+
+load("output/dataset_full/Seurat_FilterMerge_obj.Rdata")
+obj
+
+### Confirm Seruat object contains assays for RNA
+Assays(obj)
+
+# Function to perform clustering and compute ARI
+compute_ari <- function(obj, scale, iterations) {
+  print(paste("Computing ARI for", scale * 100, "% of cells", " iteration ", iterations))
+  
+  ari_values <- c()
+  
+  for (i in 1:iterations) {
+    
+    # SUBSET 1
+    set.seed(i)
+    # Subset dataset to the specified scale
+    subset_cells_1 <- sample(colnames(obj), size = floor(scale * ncol(obj)))
+    obj_1 <- subset(obj, cells = subset_cells_1)
+    # Normmalize RNA data
+    obj_1 <- NormalizeData(obj_1, normalization.method = "LogNormalize", scale.factor = 10000) 
+    # Calculate the top 2000 highly variable features
+    obj_1 <- FindVariableFeatures(obj_1, selection.method = "vst", nfeatures = 2000) 
+    # Use defaults to scale only variable features 
+    obj_1 <- ScaleData(obj_1) 
+    # Perform PCA for linear dimensional reduction on scaled data
+    obj_1 <- RunPCA(obj_1, features = NULL) 
+    # Cluster cells based on RNA data
+    obj_1 <- FindNeighbors(obj_1, reduction = "pca")
+    # Perform clustering on the subset
+    subset_obj <- FindClusters(obj_1, resolution = 0.6)
+    subset_clusters <- Idents(subset_obj)
+
+    # SUBSET 2
+    set.seed(i + 100)
+    # Subset dataset to the specified scale
+    subset_cells_2 <- sample(colnames(obj), size = floor(scale * ncol(obj)))
+    obj_2 <- subset(obj, cells = subset_cells_2)
+    # Normmalize RNA data
+    obj_2 <- NormalizeData(obj_2, normalization.method = "LogNormalize", scale.factor = 10000) 
+    # Calculate the top 2000 highly variable features
+    obj_2 <- FindVariableFeatures(obj_2, selection.method = "vst", nfeatures = 2000) 
+    # Use defaults to scale only variable features 
+    obj_2 <- ScaleData(obj_2) 
+    # Perform PCA for linear dimensional reduction on scaled data
+    obj_2 <- RunPCA(obj_2, features = NULL) 
+    # Cluster cells based on RNA data
+    obj_2 <- FindNeighbors(obj_2, reduction = "pca")
+    # Perform clustering on the subset
+    subset_obj <- FindClusters(obj_2, resolution = 0.6)
+    subset_clusters_2 <- Idents(subset_obj)
+    
+    # Compute ARI between the two clusterings
+    ari <- adjustedRandIndex(subset_clusters, subset_clusters_2)
+    ari_values <- c(ari_values, ari)
+  }
+  
+  return(mean(ari_values))
+}
+
+# Define scales and number of iterations
+scales <- seq(0.1, 1.0, by = 0.1)
+iterations <- 1
+
+# Compute ARI for each scale
+ari_results <- sapply(scales, function(scale) compute_ari(obj, scale, iterations))
+
+# Create a data frame for plotting
+ari_df <- data.frame(
+  Scale = scales * 100, 
+  ARI = ari_results
+)
+
+# Plot the results
+ggplot(ari_df, aes(x = Scale, y = ARI)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mean ARI at Different Data Scales",
+       x = "Percentage of Data",
+       y = "Mean ARI") +
+  theme_minimal()
+
+
+```
+
+#### PRE-PROCESS AND CLUSTER SEPARATELY, INTRODUCE VARIABILITY IN SEED - SAME SUBSET
+
+```{r, eval = FALSE}
+
+load("output/dataset_full/Seurat_FilterMerge_obj.Rdata")
+obj
+
+### Confirm Seruat object contains assays for RNA
+Assays(obj)
+
+# Function to perform clustering and compute ARI
+compute_ari <- function(obj, scale, iterations) {
+  print(paste("Computing ARI for", scale * 100, "% of cells", " iteration ", iterations))
+  
+  ari_values <- c()
+  
+  for (i in 1:iterations) {
+    
+    # Subset dataset to the specified scale
+    subset_cells <- sample(colnames(obj), size = floor(scale * ncol(obj)))
+    
+    # PROCESSING 1
+    set.seed(i)
+    obj_1 <- subset(obj, cells = subset_cells)
+    # Normmalize RNA data
+    obj_1 <- NormalizeData(obj_1, normalization.method = "LogNormalize", scale.factor = 10000) 
+    # Calculate the top 2000 highly variable features
+    obj_1 <- FindVariableFeatures(obj_1, selection.method = "vst", nfeatures = 2000) 
+    # Use defaults to scale only variable features 
+    obj_1 <- ScaleData(obj_1) 
+    # Perform PCA for linear dimensional reduction on scaled data
+    obj_1 <- RunPCA(obj_1, features = NULL) 
+    # Cluster cells based on RNA data
+    obj_1 <- FindNeighbors(obj_1, reduction = "pca")
+    # Perform clustering on the subset
+    subset_obj <- FindClusters(obj_1, resolution = 0.6)
+    subset_clusters <- Idents(subset_obj)
+
+    # PROCESSING 2
+    set.seed(i + 100)
+    # Subset dataset to the specified scale
+    obj_2 <- subset(obj, cells = subset_cells)
+    # Normmalize RNA data
+    obj_2 <- NormalizeData(obj_2, normalization.method = "LogNormalize", scale.factor = 10000) 
+    # Calculate the top 2000 highly variable features
+    obj_2 <- FindVariableFeatures(obj_2, selection.method = "vst", nfeatures = 2000) 
+    # Use defaults to scale only variable features 
+    obj_2 <- ScaleData(obj_2) 
+    # Perform PCA for linear dimensional reduction on scaled data
+    obj_2 <- RunPCA(obj_2, features = NULL) 
+    # Cluster cells based on RNA data
+    obj_2 <- FindNeighbors(obj_2, reduction = "pca")
+    # Perform clustering on the subset
+    subset_obj <- FindClusters(obj_2, resolution = 0.6)
+    subset_clusters_2 <- Idents(subset_obj)
+    
+    # Compute ARI between the two clusterings
+    ari <- adjustedRandIndex(subset_clusters, subset_clusters_2)
+    ari_values <- c(ari_values, ari)
+  }
+  
+  return(mean(ari_values))
+}
+
+# Define scales and number of iterations
+scales <- seq(0.1, 1.0, by = 0.1)
+iterations <- 1
+
+# Compute ARI for each scale
+ari_results <- sapply(scales, function(scale) compute_ari(obj, scale, iterations))
+
+# Create a data frame for plotting
+ari_df <- data.frame(
+  Scale = scales * 100, 
+  ARI = ari_results
+)
+
+# Plot the results
+ggplot(ari_df, aes(x = Scale, y = ARI)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mean ARI at Different Data Scales",
+       x = "Percentage of Data",
+       y = "Mean ARI") +
+  theme_minimal()
+
+
+```
+
+### Load libraries
+
+```{r, eval = FALSE}
+library(Seurat)
+library(cluster)
+library(mclust)
+library(ggplot2)
+```
+
+### Load the integrated full dataset .Rdata object and examine structure
+
+```{r, eval = FALSE}
+load("output/dataset_full/Seurat_ClusterIDCells_obj_IntegratedIntermediate.Rdata")
+obj
+
+### Confirm Seruat object contains assays for RNA
+Assays(obj)
+```
+
+### Cluster cells from partitioned datasets and calculate ARI
+
+```{r, eval = FALSE}
+original_clusters <- Idents(obj)
+
+# Function to compute ARI for a given percentage of cells
+compute_ari <- function(percentage, seurat_obj) {
+  print(paste("Computing ARI for", percentage * 100, "% of cells"))
+  
+  # Subset the Seurat object
+  subset_cells <- sample(colnames(seurat_obj), size = floor(percentage * ncol(seurat_obj)))
+  seurat_subset <- subset(seurat_obj, cells = subset_cells)
+  
+  # Perform clustering on the subset
+  seurat_subset <- FindClusters(seurat_subset, resolution = 1.2, random.seed = 123)
+  subset_clusters <- Idents(seurat_subset)
+  
+  # Compute ARI
+  ari <- adjustedRandIndex(original_clusters[subset_cells], subset_clusters)
+  return(ari)
+}
+
+# Compute ARI for different percentages of cells
+percentages <- seq(0.1, 1.0, by = 0.1)
+ari_values <- sapply(percentages, compute_ari, seurat_obj = obj)
+```
+
+### Plot ARI values as a function of percent of datapoints
+
+```{r, eval = FALSE}
+# Create a data frame for plotting
+ari_data <- data.frame(Percentage = percentages * 100, ARI = ari_values)
+
+# Plot the ARI values using ggplot2
+ari_plot <- ggplot(ari_data, aes(x = Percentage, y = ARI)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Adjusted Rand Index (ARI) vs. Percentage of Data Points",
+       x = "Percentage of Data Points",
+       y = "Adjusted Rand Index (ARI)") +
+  theme_minimal()
+
+# Print the plot
+print(ari_plot)
+```
+
+### Repeat the ARI analysis, but with cell type identities, rather than Seurat cluster IDs
+
+### Load the sctype classified full dataset .Rdata object and examine structure
+
+```{r, eval = FALSE}
+load("output/dataset_full/Seurat_ClusterIDCellsRNAonly_obj.Rdata")
+obj
+
+### Confirm Seruat object contains assays for RNA
+Assays(obj)
+```
+
+### Cluster cells from partitioned datasets and calculate ARI
+
+```{r, eval = FALSE}
+Idents(obj) <- "sctype_classification"
+original_clusters <- Idents(obj)
+
+# Function to compute ARI for a given percentage of cells
+compute_ari <- function(percentage, seurat_obj) {
+  print(paste("Computing ARI for", percentage * 100, "% of cells"))
+  
+  # Subset the Seurat object
+  subset_cells <- sample(colnames(seurat_obj), size = floor(percentage * ncol(seurat_obj)))
+  seurat_subset <- subset(seurat_obj, cells = subset_cells)
+  
+  # Perform clustering on the subset
+  seurat_subset <- FindClusters(seurat_subset, resolution = 1.2, random.seed = 123)
+  subset_clusters <- Idents(seurat_subset)
+  
+  # Compute ARI
+  ari <- adjustedRandIndex(original_clusters[subset_cells], subset_clusters)
+  return(ari)
+}
+
+# Compute ARI for different percentages of cells
+percentages <- seq(0.1, 1.0, by = 0.1)
+ari_values <- sapply(percentages, compute_ari, seurat_obj = obj)
+```
+
+### Plot ARI values as a function of percent of datapoints
+
+```{r, eval = FALSE}
+# Create a data frame for plotting
+ari_data <- data.frame(Percentage = percentages * 100, ARI = ari_values)
+
+# Plot the ARI values using ggplot2
+ari_plot <- ggplot(ari_data, aes(x = Percentage, y = ARI)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Adjusted Rand Index (ARI) vs. Percentage of Data Points",
+       x = "Percentage of Data Points",
+       y = "Adjusted Rand Index (ARI)") +
+  theme_minimal()
+
+# Print the plot
+print(ari_plot)
+```
+
+## Consider doing different resolutions

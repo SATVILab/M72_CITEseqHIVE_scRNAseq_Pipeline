@@ -47,7 +47,7 @@ library(shiny)
 ### Load the .Rdata file generated after RNA clustering only by CITEseqHIVE_Seurat_ClusterIDcells.qmd
 
 ```{r}
-load("output/Seurat_ClusterIDCellsRNAonly_obj.Rdata")
+load("output/dataset_full/Seurat_ClusterIDCellsRNAonly_obj.Rdata")
 obj
 
 ### Confirm Seruat object contains assays for RNA and ADT
@@ -69,6 +69,12 @@ obj_D37_Lymphoid <- subset(obj_D37, subset = sctype_classification %in% c("Pro-B
 obj_M72_Lymphoid <- subset(obj_M72, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
 obj_UNSTIM_Lymphoid <- subset(obj_UNSTIM, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
 obj_Lymphoid <- subset(obj, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells", "Naive CD8+ T cells", "Naive CD4+ T cells", "Memory CD8+ T cells", "Memory CD4+ T cells", "Effector CD8+ T cells", "Effector CD4+ T cells", "CD8+ NKT-like cells", "CD4+ NKT-like cells", "Natural killer cells", "Antigen-specific CD8+ T cells", "Antigen-specific CD4+ T cells")) #add in gd-T cells but need to know how to put symbols
+
+
+obj_Lymphoid <- subset(obj, subset = sctype_classification %in% c("Pro-B cells", "Pre-B cells", "Naive B cells", "Memory B cells", "Plasma B cells")
+                       
+                       "Natural killer cells")) #add in gd-T cells but need to know how to put symbols
+
 
 obj_D0_Myeloid <- subset(obj_D0, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
 obj_D37_Myeloid <- subset(obj_D37, subset = sctype_classification %in% c("Eosinophils", "Neutrophils", "Basophils", "Mast cells", "Classical Monocytes", "Non-classical monocytes", "Intermediate monocytes", "Macrophages", "Megakaryocyte", "Erythroid-like and erythroid precursor cells", "Myeloid Dendritic cells", "Plasmacytoid Dendritic cells", "Granulocytes", "ISG expressing immune cells"))
@@ -322,7 +328,7 @@ for (i in seq_along(AS.genes_ADT)) {
 dev.off()
 ```
 
-### Create Interactive Plots - Antigen Specific Markers 
+### Create Interactive Plots - Antigen Specific Markers
 
 ```{shinylive-r}
 #| standalone: true

@@ -20,7 +20,7 @@ rm(list=ls())
 ### Set output directory
 
 ```{r}
-dir_save <- "output/"
+dir_save <- "output/dataset_full/"
 ```
 
 ### Load libraries
@@ -44,6 +44,7 @@ library(ggplot2)
 library(gridExtra)
 library(cowplot)
 library(DT)
+library(glue)
 ```
 
 ### Load Seurat objects and perform initial QC and filtering
@@ -60,7 +61,7 @@ Current thresholds:
 
 3.  percent_mito \< 0.15 (Percent of mitochondrial reads must be less than 15% per cell)
 
-This loop will also iterate through each plate and plot per-plate QC metrics in individual tabs.
+This loop will also iterate through each plate (libraries from the 4 HIVEs per run) and plot per-plate QC metrics in individual tabs.
 
 ```{r, message = FALSE, warning = FALSE, output = FALSE}
 # Function to create combined plots for a Seurat object
@@ -89,7 +90,7 @@ create_combined_plot <- function(obj) {
     geom_point(aes(color = SampleName)) +
     theme_minimal() +
     theme(legend.position = "none", panel.grid.minor = element_blank()) +
-    labs(title = "",
+    labs(title = "Total Reads vs. nCount_RNA",
          x = "Total reads",
          y = "nCount")
   totalvcount_plot <- paste0(file_name, "_QCplots_TotalReadsVsCounts_unfiltered.pdf")
@@ -102,7 +103,7 @@ create_combined_plot <- function(obj) {
     geom_point(aes(color = SampleName)) +
     theme_minimal() +
     theme(legend.position = "none", panel.grid.minor = element_blank()) +
-    labs(title = "",
+    labs(title = "Exon Reads vs. nCount_RNA",
          x = "Exon reads",
          y = "nCount")
   exonvcount_plot <- paste0(file_name, "_QCplots_ExonReadsVsCounts_unfiltered.pdf")
@@ -117,7 +118,7 @@ create_combined_plot <- function(obj) {
                  color="black", linetype="solid") +
     theme_minimal() +
     theme(legend.position = "none", panel.grid.minor = element_blank()) +
-    labs(title = "Complexity",
+    labs(title = "Exon Complexity",
          x = "",
          y = "Exon reads / nCount") +
     scale_y_continuous(limits = c(0, 5), breaks = seq(0, 5, by = 0.5))
@@ -133,7 +134,7 @@ create_combined_plot <- function(obj) {
                  color="black", linetype="solid") +
     theme_minimal() +
     theme(legend.position = "none", panel.grid.minor = element_blank()) +
-    labs(title = "Complexity",
+    labs(title = "Total Complexity",
          x = "",
          y = "Total reads / nCount") +
     facet_grid(scales = "free_y")
@@ -217,7 +218,7 @@ create_combined_plot <- function(obj) {
 combined_plots_list <- list()
 
 # Create a list of all files in the "data" subdirectory
-directory <- "data"
+directory <- "data/dataset_full"
 files <- list.files(directory, full.names = TRUE)
 
 # Filter to keep only the Rdata files
@@ -240,6 +241,7 @@ for (data in rdata_files) {
   obj@meta.data <- separate(obj@meta.data, MULTI_ID, into = c("RUN", "PLATE", "HIVE", "PID", "VISIT", "STIM"), sep = "-", remove = FALSE)
   
   # Create column with merged VISIT, STIM, and group information
+  obj@meta.data$VISIT_group <- paste(obj@meta.data$VISIT, obj@meta.data$group, sep = " ")
   obj@meta.data$VISIT_STIM <- paste(obj@meta.data$VISIT, obj@meta.data$STIM, sep = " ")
   obj@meta.data$VISIT_STIM_group <- paste(obj@meta.data$VISIT, obj@meta.data$STIM, obj@meta.data$group, sep = " ")
 
@@ -272,7 +274,6 @@ for (data in rdata_files) {
 ```{r}
 #| fig-height: 32.5
 #| results: asis
-library(glue)
 
 # Generate the tabset in Quarto
 for (file_name in names(combined_plots_list)) {
@@ -285,7 +286,7 @@ for (file_name in names(combined_plots_list)) {
 
 # Merge all filtered Seurat objects
 
-Now that all individual runs have been QC'd and filtered. High quality cells from all runs will be merged into a single Seurat object for further downstream processing and analysis.
+Now that all individual plates have been QC'd and filtered. High quality cells from all plates will be merged into a single Seurat object for further downstream processing and analysis.
 
 ```{r}
 # Get all object names in the environment
@@ -297,10 +298,11 @@ filtered_objects <- all_objects[grep("^obj_filtered_", all_objects)]
 # Create a list containing all Seurat objects
 list_seurat <- lapply(filtered_objects, get)
 
-### REMOVE INDIVIDUAL SERUAT OBJS
-
 # Merge all filtered Seurat objects
 obj <- Merge_Seurat_List(list_seurat = list_seurat)
+
+# Remove all individual Seurat objects
+rm(list = filtered_objects)
 ```
 
 # Export filtered and merged metadata
@@ -313,12 +315,11 @@ write.csv(obj@meta.data, file = file.path(dir_save, "FilterMerge_metadata.csv"),
 datatable(head(obj@meta.data), class = 'cell-border stripe')
 ```
 
-# Visualize filtered QC metrics
+# Visualize summary QC metrics for filtered and merged dataset
 
 Visualize QC metrics on the filtered, merged, dataset. These QC metrics include features relevant to cell and sequencing quality. Metrics are split by HIVE number (HIVE###). Each HIVE includes samples from two randomly-selected PIDs for both day 0 (D0) and day 37 (D37) post-vaccination. Each experimental processing batch consists of four sequentially numbered HIVEs.
 
-```{r}
-# Visualize the filtered QC metrics
+```{r, message = FALSE, warning = FALSE}
 plot1 <- VlnPlot(obj, features = c("nFeature_RNA", "nCount_RNA", "percent.mito"), ncol = 1, pt.size = 0)
 
 vln_plots <- paste0("QCplots_vln_FilterMerge.pdf")
@@ -341,10 +342,6 @@ pdf(paste0(dir_save, qc_plots), height = 5, width = 15)
 grid.arrange(plot2, plot3, plot4,
              ncol = 3)
 invisible(dev.off())
-
-grid.arrange(plot2, ncol = 1)
-grid.arrange(plot3, ncol = 1)
-grid.arrange(plot4, ncol = 1)
 
 # Plot additional unfiltered QC metrics to assess sequencing depth
 # Plot total reads vs nCount_RNA 
@@ -502,7 +499,6 @@ plot14 <-
   geom_density(aes(color = PID)) +
   scale_x_log10() +
   theme_bw()
-
 density_plot <- paste0("QCplots_density_FilterMerge.pdf")
 pdf(paste0(dir_save, density_plot), height = 5, width = 15)
 plot14
@@ -564,7 +560,7 @@ print(plot14)
 ```
 :::
 
-# Save filtered Seurat object as new .Rdata file
+# Save filtered Seurat object as new .Rdata and .rds files
 
 The final filtered and merged Seurat object produced by this workflow will be saved as new .Rdata and .rds files which will be used as inputs for downstream workflows.
 

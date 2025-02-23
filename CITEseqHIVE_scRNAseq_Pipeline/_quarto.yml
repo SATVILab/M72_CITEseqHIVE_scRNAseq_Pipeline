@@ -12,11 +12,15 @@ book:
     - CITEseqHIVE_TerraWorkflows.qmd
     #- CITEseqHIVE_Seurat_FilterMergeQC_train.qmd
     #- CITEseqHIVE_Seurat_FilterMergeQC_test.qmd
-    - CITEseqHIVE_Seurat_FilterMergeQC_full.qmd
+    #- CITEseqHIVE_Seurat_FilterMergeQC_full.qmd
+    - CITEseqHIVE_Seurat_FilterMergeQC.qmd
     #- CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_train.qmd
     #- CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_test.qmd
-    - CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_full.qmd
+    #- CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_full.qmd
     #- CITEseqHIVE_Seurat_ClusterIDcells_Multimodal_traintestfull.qmd
+    - CITEseqHIVE_Seurat_ClusterIDcells_Multimodal.qmd
+    - CITEseqHIVE_Seurat_clusterProfiler.qmd
+    - CITEseqHIVE_Seurat_ARI.qmd
     - summary.qmd
     - references.qmd
 
